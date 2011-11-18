@@ -1,0 +1,36 @@
+== 0.5.0 / 2011-10-28
+
+  * Birthday!
+  
+  * Client, Broker and Worker all successfully connect to each other.
+  
+  * Worker can successfully send READY messages. It can also send
+    and receive DISCONNECT messages properly.
+    
+  * Broker can process READY and DISCONNECT messages from Worker.
+  
+  * Broker can accept REQUEST messages from Client. No processing is done other
+    than responding to the request with a FAILURE_REPLY message.
+    
+  * Client can send REQUEST messages and receive FAILURE_REPLY messages.
+  
+  * Heartbeats work between worker and broker.
+  
+  * Consensus Broker
+    * Matches client requests to the correct service and dispatches the request
+      to all registered workers.
+      
+    * Collects worker replies and delivers aggregated results back to client.
+  
+    * Reply to client with FAILURE for several Consensus conditions:
+
+      * Any worker responds with a failure.
+      
+      * Any worker disconnects while there is an open request.
+      
+      * Any worker times out while there is an open request.
+      
+      * When the service is already busy working on an open request.
+
+  * Majordomo Broker
+  

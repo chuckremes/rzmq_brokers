@@ -1,0 +1,112 @@
+module RzmqBrokers
+  module Client
+
+    # For use within an existing Reactor
+    #
+    class Handler
+      include ZMQMachine::Server::XREQ
+
+      def initialize(configuration)
+        @config = configuration
+        @reactor = @config.reactor
+        @timeout_ms = @config.timeout_ms
+        @heartbeat_interval = @config.heartbeat_interval
+        @sequence_id = @config.sequence_id || 1
+        @max_retries = @config.heartbeat_retries || 3
+        @retries = 0
+        @client_id = @config.client_id || generate_client_id
+        configure_messages_classes(@config)
+
+        @on_success = @config.on_success
+        @on_failure = @config.on_failure
+
+        server_config = ZM::Server::Configuration.create_from(@config)
+        server_config.on_read(method(:on_read))
+        super(server_config)
+      end
+
+      def on_read(socket, messages, envelope)
+        message = @base_msg_klass.create_from(messages, envelope)
+        #@reactor.log(:debug, "Client reply, success_reply? [#{message.success_reply?}], failure_reply? [#{message.failure_reply?}], msg.inspect #{message.inspect}")
+
+
+        if message.success_reply?
+          @on_success.call(message)
+        elsif message.failure_reply?
+          @on_failure.call(message)
+        elsif message.heartbeat?
+        end
+      end
+
+      def send_request(service_name, payload)
+        #@reactor.oneshot_timer(@timeout_ms, method(:timeout)) if @timeout_ms
+        message = @client_request_msg_klass.new(service_name, get_sequence_id, payload)
+        @reactor.log(:info, "client, sending request #{message.inspect}")
+        write(@base_msg_klass.delimiter + message.to_msgs)
+      end
+
+
+      private
+
+      # Returns the current sequence number and advances it by 1 for
+      # the next call. It's coupled with the client_id for convenience so
+      # this returns a unique identifier for each request.
+      #
+      def get_sequence_id
+        number = @sequence_id
+        @sequence_id += 1
+        [number, @client_id]
+      end
+      
+      def configure_messages_classes(config)
+        @base_msg_klass = config.base_msg_klass.const_get('Message')
+        parent = config.base_msg_klass
+        @client_request_msg_klass = parent.const_get('ClientRequest')
+      end
+      
+      def generate_client_id
+        #UUID.new.generate(:compact).to_a.pack("H*")
+        id = UUID.new.generate(:compact)
+        [id].pack("H*")
+      end
+    end # class Handler
+
+
+    # Spawns its own reactor and acts completely autonomously in its own thread.
+    #
+    class Client
+      attr_reader :reactor
+      
+      def initialize(configuration)
+        @reactor = ZM::Reactor.new(configuration)
+        @reactor.run
+        configuration.reactor(@reactor)
+        @handler = RzmqBrokers::Client::Handler.new(configuration)
+      end
+
+      def send_request(service_name, payload)
+        # this method could be called by any thread, so we need to serialize the call back
+        # onto the reactor thread so that we aren't doing a socket operation from a
+        # non-reactor thread. 0mq gets very upset if we try.
+        #
+        schedule { @handler.send_request(service_name, payload) }
+      end
+
+      def send_request_with_timeout(service_name, payload, timeout_ms)
+        # this method could be called by any thread, so we need to serialize the call back
+        # onto the reactor thread so that we aren't doing a socket operation from a
+        # non-reactor thread. 0mq gets very upset if we try.
+        #
+        schedule { @handler.send_request_with_timeout(service_name, payload, timeout_ms) }
+      end
+      
+      
+      private
+      
+      def schedule(&blk)
+        @reactor.next_tick(blk)
+      end
+    end
+
+  end # module Client
+end # module RzmqBrokers
