@@ -73,7 +73,7 @@ class LookupRequest < DBMessage
   end
 
   def encode
-    string = LookupRequest.encode_payload({
+    string = self.class.encode_payload({
       'range_start' => range_start,
       'range_end' => range_end,
       'duration' => duration,
@@ -109,7 +109,7 @@ class LookupReplySuccess < DBMessage
   end
 
   def encode
-    string = LookupReplySuccess.encode_payload({
+    string = self.class.encode_payload({
       'answer' => answer
     })
 

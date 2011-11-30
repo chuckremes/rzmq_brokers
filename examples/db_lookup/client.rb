@@ -12,7 +12,6 @@ class DBClient
 
       endpoint  "tcp://127.0.0.1:5555"
       connect  true
-      service_name  "db-lookup"
       max_broker_timeouts 1
 
       on_success  success
@@ -47,7 +46,9 @@ class DBClient
       end
       
       options = RzmqBrokers::Client::RequestOptions.new do
-        timeout_ms 200
+        # adjusting this even a little lower will result in many failures;
+        # adjusting higher will result in more successes
+        timeout_ms 235
         retries 3
       end
       

@@ -11,9 +11,6 @@ class RunBroker
       broker_endpoint  "tcp://127.0.0.1:5555"
       broker_bind  true
 
-      publish_endpoint "tcp://127.0.0.1:5555"
-      publish_bind true
-
       broker_klass RzmqBrokers::Majordomo::Broker::Handler
       service_klass RzmqBrokers::Majordomo::Broker::Service
       worker_klass RzmqBrokers::Broker::Worker

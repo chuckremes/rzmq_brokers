@@ -1,7 +1,6 @@
 $:.push File.expand_path("../../../lib", __FILE__)
 
 require 'rubygems'
-#require '../../lib/rzmq_brokers'
 require 'rzmq_brokers'
 require 'broker'
 require 'worker'
