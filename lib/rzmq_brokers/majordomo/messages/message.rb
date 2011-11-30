@@ -17,6 +17,14 @@ module RzmqBrokers
       WORKER_REPLY_FAILURE = [0x05].pack('C')
       WORKER_DISCONNECT = [0x06].pack('C')
 
+      # We have separate classes for Client messages and Worker messages. This is
+      # necessary so it is easy to differentiate between the origination of a 
+      # message and route it correctly to either a Client or a Worker from the
+      # Broker's perspective.
+      #
+      # Keeping them separated also let's us evolve the Client and Worker protocols
+      # independently and at their own pace.
+      #
       class Message
         include RzmqBrokers::Messages::MessageInstanceMethods
         extend RzmqBrokers::Messages::MessageClassMethods
@@ -52,6 +60,8 @@ module RzmqBrokers
             elsif worker_disconnect?(msg_type)
               WorkerDisconnect.from_network(frames, address)
             else
+              # should be implemented by subclassers to handle message types that are
+              # not part of the base broker
               unknown_worker_message_handler(msg_type, frames, address)
             end
           end

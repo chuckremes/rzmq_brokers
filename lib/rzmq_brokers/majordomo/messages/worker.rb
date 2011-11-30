@@ -202,30 +202,11 @@ module RzmqBrokers
       # 2  - sequence ID, 16-byte uuid + uint64, big-endian
       # 3+ - application frames
       #
-      class WorkerReplyFailure < WorkerMessage
-        def self.from_network(frames, envelope)
-          sequence_id = sequence_decoder(frames.at(2).copy_out_string)
-          payload = []
-          i = 0
-          while frames.at(3 + i)
-            payload << frames.at(3 + i).copy_out_string
-            i += 1
-          end
-
-          new(sequence_id, payload, envelope)
-        end
-
-        def initialize(sequence_id, payload, envelope = nil)
-          @sequence_id = sequence_id
-          @payload = payload
-          @envelope = envelope
-        end
+      class WorkerReplyFailure < WorkerReplySuccess
+        
+        def success_reply?() false; end
 
         def failure_reply?() true; end
-
-        def to_msgs
-          super + [reply_msg, sequence_id_msg] + payload_msgs
-        end
 
         def reply_msg
           ZMQ::Message.new(WORKER_REPLY_FAILURE)

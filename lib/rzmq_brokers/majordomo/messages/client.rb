@@ -91,12 +91,6 @@ module RzmqBrokers
           new(service_name, sequence_id, payload, envelope)
         end
 
-        def self.extract_payload(frames)
-          if frames.size > 4
-            frames[4..-1].map { |msg| msg.copy_out_string }
-          end
-        end
-
         def initialize(service_name, sequence_id, payload, envelope = nil)
           @service_name = service_name
           @sequence_id = sequence_id
