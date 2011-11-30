@@ -106,6 +106,7 @@ module RzmqBrokers
 
       def write_messages(messages)
         @hb_sent_at = Time.now
+        @reactor.log(:debug, "Worker, sending a message and updating its hb_sent_at to [#{@hb_sent_at}].")
         write(messages)
       end
 
