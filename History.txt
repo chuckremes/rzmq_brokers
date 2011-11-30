@@ -1,3 +1,10 @@
+== 0.6.0 / 2011
+  * Changed Broker to send a payload in the ClientReplyFailure message.
+    Former behavior was that it just returned nil, but that's no good
+    for those situations where the failure needs to specify its cause.
+    So now error messages, codes and the like can be sent back as part
+    of a failure message.
+
 == 0.5.0 / 2011-10-28
 
   * Birthday!
