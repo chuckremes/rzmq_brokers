@@ -5,7 +5,6 @@ module RzmqBrokers
     %w( 
     broker 
     broker_endpoint broker_bind broker_connect 
-    publish_endpoint publish_bind publish_connect 
     client_expiration_secs 
     broker_klass service_klass worker_klass
     base_msg_klass
@@ -22,7 +21,7 @@ module RzmqBrokers
         self.client_expiration_secs ||= 3600
       end
 
-    end # RequestOptions
+    end # Configuration
 
   end # module Broker
 end # module RzmqBrokers

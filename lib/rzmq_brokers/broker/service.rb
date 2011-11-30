@@ -11,7 +11,8 @@ module RzmqBrokers
       include Enumerable
       attr_reader :name
 
-      def initialize(name, handler)
+      def initialize(reactor, name, handler)
+        @reactor = reactor
         @name = name
         @handler = handler
         @workers = Hash.new # key is identity, value is Worker instance
@@ -28,10 +29,12 @@ module RzmqBrokers
       end
 
       def add(worker)
+        @reactor.log(:debug, "Service [#{name}] adding worker, [#{worker_count}] total workers.")
         @workers[worker.identity] = worker
       end
 
       def delete(worker)
+        @reactor.log(:debug, "Service [#{name}] deleting worker, [#{worker_count}] remaining workers.")
         @workers.delete(worker.identity)
       end
 

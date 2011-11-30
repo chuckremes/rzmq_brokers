@@ -20,18 +20,16 @@ module RzmqBrokers
             end
 
             def save_reply(message)
-              if message.failure_reply?
-                @service.close_request(self)
-              else
-                @reply = message.payload
-
-                send_client_reply_success
-                @service.close_request(self)
-              end
+              @reply = message
+              @service.close_request(self)
             end
-            
+
             def satisfied?
-              @reply
+              if @reply
+                !@reply.failure_reply?
+              else
+                false
+              end
             end
 
             def send_client_reply_success
@@ -39,15 +37,16 @@ module RzmqBrokers
             end
 
             def send_client_reply_failure
-              @handler.send_client_reply_failure(@client_request.envelope_msgs, @service.name, @client_request.sequence_id)
+              @handler.send_client_reply_failure(@client_request.envelope_msgs, @service.name, @client_request.sequence_id, saved_payload)
             end
 
             def saved_payload
-              @reply
+              @reply.payload if @reply
             end
 
             def close
-              send_client_reply_failure unless satisfied?
+              satisfied? ? send_client_reply_success : send_client_reply_failure
+              
               @service.add_mru_worker(@worker)
             end
 
@@ -186,7 +185,6 @@ module RzmqBrokers
         def process_reply(message)
           worker = super
           @requests.process_reply(message)
-          # get oldest request and give it to this now available worker?
         end
 
         # A timed-out or disconnected worker should

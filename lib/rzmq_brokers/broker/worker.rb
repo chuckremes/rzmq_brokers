@@ -14,7 +14,7 @@ module RzmqBrokers
         @identity = identity
         @envelope = envelope
 
-        @heartbeat_interval = 10_000
+        @heartbeat_interval = 180_000
         @heartbeat_retries = 3
         @heartbeat_timer = nil
         start_heartbeat
@@ -48,6 +48,7 @@ module RzmqBrokers
           start_heartbeat
         end
 
+        @reactor.log(:debug, "On broker, worker [#{@identity}] received a HB message.")
         @hb_received_at = Time.now
       end
 

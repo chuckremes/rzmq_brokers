@@ -100,7 +100,9 @@ module RzmqBrokers
         if service
           # returns true if there are workers, false otherwise
           @reactor.log(:debug, "Broker, found service for [#{service_name}]")
-          service.workers?
+          found = service.workers?
+          @reactor.log(:debug, "Broker, workers for [#{service_name}] found? [#{found}]")
+          found
         else
           @reactor.log(:warn, "Broker, no service found for [#{service_name}]")
           false
@@ -152,9 +154,9 @@ module RzmqBrokers
         @router.write(return_address + @client_reply_success_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
-      def send_client_reply_failure(return_address, service_name, sequence_id)
+      def send_client_reply_failure(return_address, service_name, sequence_id, payload)
         @reactor.log(:debug, "Broker, sending a failure reply to client.")
-        @router.write(return_address + @client_reply_failure_msg_klass.new(service_name, sequence_id, nil).to_msgs)
+        @router.write(return_address + @client_reply_failure_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
       def dispatch_client_work(message)
@@ -183,6 +185,8 @@ module RzmqBrokers
     # overridden by passing in a class name as +handler_klass+.
     #
     class Broker
+      attr_reader :reactor
+      
       def initialize(configuration)
         @reactor = ZM::Reactor.new(configuration)
         @reactor.run

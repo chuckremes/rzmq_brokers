@@ -144,6 +144,11 @@ module RzmqBrokers
         schedule { @handler.send_request(service_name, payload) }
       end
 
+      # Takes the request +message+ and the +request_options+ and sends
+      # them to the broker. This method is also *responsible* for assigning
+      # a +sequence_id+ to the message. If the message already has one, it is
+      # overwritten here.
+      #
       def process_request(message, request_options = nil)
         # this method could be called by any thread, so we need to serialize the call back
         # onto the reactor thread so that we aren't doing a socket operation from a
