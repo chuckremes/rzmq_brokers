@@ -29,13 +29,13 @@ module RzmqBrokers
       end
 
       def add(worker)
-        @reactor.log(:debug, "Service [#{name}] adding worker, [#{worker_count}] total workers.")
         @workers[worker.identity] = worker
+        @reactor.log(:debug, "Service [#{name}] adding worker, [#{worker_count}] total workers.")
       end
 
       def delete(worker)
-        @reactor.log(:debug, "Service [#{name}] deleting worker, [#{worker_count}] remaining workers.")
         @workers.delete(worker.identity)
+        @reactor.log(:debug, "Service [#{name}] deleting worker, [#{worker_count}] remaining workers.")
       end
 
       def [](identity)
