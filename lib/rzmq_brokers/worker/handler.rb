@@ -173,7 +173,7 @@ module RzmqBrokers
         @handler = RzmqBrokers::Worker::Handler.new(configuration)
       end
 
-      def disconnect
+      def disconnect_from_broker
         schedule { @handler.disconnect_from_broker }
       end
 
