@@ -40,8 +40,8 @@ module RzmqBrokers
       end
 
       def send_readiness_to_broker
-        message = @worker_ready_msg_klass.new(@service_name)
-        @reactor.log(:info, "Worker, sending READY for service [#{@service_name}]")
+        message = @worker_ready_msg_klass.new(@service_name, @heartbeat_interval, @heartbeat_retries)
+        @reactor.log(:info, "Worker, sending READY for service [#{@service_name}] with HB interval [#{@heartbeat_interval}] and retries [#{@heartbeat_retries}]")
         write_messages(@base_msg_klass.delimiter + message.to_msgs)
         start_heartbeat
         start_broker_timer
@@ -125,7 +125,7 @@ module RzmqBrokers
         # do not send more than 1 HB per interval; this check is necessary because *other*
         # messages sent to the broker (READY, REPLY) are equivalent to heartbeats
         if ((Time.now - @hb_sent_at) * 1_000) >= @heartbeat_interval
-          message = @worker_heartbeat_msg_klass.new(@heartbeat_interval, @heartbeat_retries)
+          message = @worker_heartbeat_msg_klass.new
           @reactor.log(:debug, "Worker, sending HEARTBEAT")
           write_messages(@base_msg_klass.delimiter + message.to_msgs)
         end

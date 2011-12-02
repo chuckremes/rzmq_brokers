@@ -11,25 +11,22 @@ module RzmqBrokers
         @services = Hash.new # key 'k' is the service name
       end
 
-      def register(service_name, identity, envelope)
+      def register(service_name, identity, heartbeat_interval, heartbeat_retries, envelope)
         unless @services.has_key?(service_name)
           @reactor.log(:info, "Services, creating service for [#{service_name}]")
           @services[service_name] = @service_klass.new(@reactor, service_name, @handler)
         end
 
-        @services[service_name].add(@worker_klass.new(@reactor, @handler, service_name, identity, envelope))
+        @services[service_name].add(@worker_klass.new(@reactor, @handler, service_name, identity, heartbeat_interval, heartbeat_retries, envelope))
       end
 
       # Deletes the named service and all of its workers.
       #
       def deregister(service_name)
         service = @services[service_name]
+
         if service
-          service.each do |worker|
-            service.delete(worker)
-            worker.die
-          end
-          
+          service.each { |worker| service.delete(worker) }
           @services.delete(service_name)
         end
       end
@@ -39,7 +36,6 @@ module RzmqBrokers
       def deregister_worker(worker)
         service = @services[worker.service_name]
         service && service.delete(worker)
-        worker.die
       end
 
       def find_worker(identity)

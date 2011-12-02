@@ -1,4 +1,28 @@
-== 0.6.0 / 2011
+== 0.6.1 / 2011
+  * Fixed bug. When a Worker timed out in the Broker, it was deleted but
+    the logic was missing to cancel its heartbeat timer and give up other
+    resources. So, expired workers were still sent heartbeat messages from
+    the Broker even though they were gone. To fix, the worker cleanup
+    responsibility was moved from Services to Service.
+    
+  * Modified the READY message to include the requested heartbeat interval
+    and heartbeat retries for the worker. Also, removed this same information
+    from the HEARTBEAT message. This solved a problem where a Worker with
+    a short heartbeat would never receive an answering heartbeat from the
+    Broker before the max timeout triggered. The Broker defaulted to 180s
+    between heartbeats for a new worker. The Worker would send its READY
+    message and start its heartbeat timer. The heartbeat timer would fire
+    but would *not* send a message because the READY message was considered
+    a valid heartbeat for the current interval. By this point 2/3 of the
+    max timeout had expired. By the point when the Worker sent an actual
+    HEARTBEAT with its desired interval & retries, the Worker's Broker
+    timeout would expire and the Worker would reconnect to the Broker and
+    start all over again. Meanwhile, the Broker would *finally* get a
+    HEARTBEAT, update its intervals, and then wait another interval before
+    sending a message. By including the interval and retry information in
+    the READY message, we avoid all of these timing issues.
+
+== 0.6.0 / 2011-11-30
   * Changed Broker to send a payload in the ClientReplyFailure message.
     Former behavior was that it just returned nil, but that's no good
     for those situations where the failure needs to specify its cause.

@@ -24,26 +24,42 @@ module RzmqBrokers
       # 0  - protocol header
       # 1  - message type
       # 2  - service name
+      # 3  - desired heartbeat interval in milliseconds
+      # 4  - desired max retries
       #
       class WorkerReady < WorkerMessage
+        attr_reader :heartbeat_interval, :heartbeat_retries
+
         def self.from_network(frames, envelope)
           service_name = frames.at(2).copy_out_string
-          new(service_name, envelope)
+          heartbeat_interval = heartbeat_interval_decoder(frames.at(3).copy_out_string)
+          heartbeat_retries = heartbeat_retries_decoder(frames.at(4).copy_out_string)
+          new(service_name, heartbeat_interval, heartbeat_retries, envelope)
         end
 
-        def initialize(service_name, envelope = nil)
+        def initialize(service_name, heartbeat_interval, heartbeat_retries, envelope = nil)
           @service_name = service_name
+          @heartbeat_interval = heartbeat_interval
+          @heartbeat_retries = heartbeat_retries
           @envelope = envelope
         end
 
         def ready?() true; end
 
         def to_msgs
-          super + [ready_msg, service_name_msg]
+          super + [ready_msg, service_name_msg, heartbeat_interval_msg, heartbeat_retries_msg]
         end
 
         def ready_msg
           ZMQ::Message.new(WORKER_READY)
+        end
+
+        def heartbeat_interval_msg
+          ZMQ::Message.new(Message.heartbeat_interval_encoder(@heartbeat_interval))
+        end
+
+        def heartbeat_retries_msg
+          ZMQ::Message.new(Message.heartbeat_retries_encoder(@heartbeat_retries))
         end
       end # class WorkerReady
 
@@ -77,21 +93,14 @@ module RzmqBrokers
 
       # 0  - protocol header
       # 1  - message type
-      # 2  - desired heartbeat interval in milliseconds
-      # 3  - desired max retries
       #
       class WorkerHeartbeat < WorkerMessage
-        attr_reader :heartbeat_interval, :heartbeat_retries
 
         def self.from_network(frames, envelope)
-          heartbeat_interval = heartbeat_interval_decoder(frames.at(2).copy_out_string)
-          heartbeat_retries = heartbeat_retries_decoder(frames.at(3).copy_out_string)
-          new(heartbeat_interval, heartbeat_retries, envelope)
+          new(envelope)
         end
 
-        def initialize(heartbeat_interval, heartbeat_retries, envelope = nil)
-          @heartbeat_interval = heartbeat_interval
-          @heartbeat_retries = heartbeat_retries
+        def initialize(envelope = nil)
           @envelope = envelope
         end
 

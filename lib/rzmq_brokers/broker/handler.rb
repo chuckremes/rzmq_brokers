@@ -117,7 +117,7 @@ module RzmqBrokers
           #disconnect_worker(worker)
           #@services.deregister(worker)
         else
-          @services.register(message.service_name, worker_identity, message.envelope.dup)
+          @services.register(message.service_name, worker_identity, message.heartbeat_interval, message.heartbeat_retries, message.envelope.dup)
           @reactor.log(:info, "Activated worker [#{worker_identity}] for service [#{message.service_name}]")
         end
       end
@@ -139,9 +139,9 @@ module RzmqBrokers
       end
 
       # pass in the worker; uses worker to build hb message and get return address
-      def send_worker_heartbeat(worker, interval, retries)
+      def send_worker_heartbeat(worker)
         @reactor.log(:debug, "Broker, heartbeat for worker [#{worker.identity}]")
-        @router.write(worker.return_address + @worker_heartbeat_msg_klass.new(interval, retries).to_msgs)
+        @router.write(worker.return_address + @worker_heartbeat_msg_klass.new.to_msgs)
       end
 
       def send_worker_request(worker, request)

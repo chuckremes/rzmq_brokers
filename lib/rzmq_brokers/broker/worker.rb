@@ -7,15 +7,15 @@ module RzmqBrokers
     #
     class Worker
       attr_reader :service_name, :identity, :envelope
-      def initialize(reactor, handler, service_name, identity, envelope)
+      def initialize(reactor, handler, service_name, identity, heartbeat_interval, heartbeat_retries, envelope)
         @reactor = reactor
         @handler = handler
         @service_name = service_name
         @identity = identity
         @envelope = envelope
 
-        @heartbeat_interval = 180_000
-        @heartbeat_retries = 3
+        @heartbeat_interval = heartbeat_interval
+        @heartbeat_retries = heartbeat_retries
         @heartbeat_timer = nil
         start_heartbeat
         @hb_received_at = Time.now
@@ -31,23 +31,12 @@ module RzmqBrokers
       end
 
       def beat
-        @handler.send_worker_heartbeat(self, @heartbeat_interval, @heartbeat_retries)
+        @handler.send_worker_heartbeat(self)
       end
 
-      # Called by handler whenever it receives a worker heartbeat. Resets the heartbeat timer if
-      # the interval or retries inside this message are acceptable, otherwise the timer is
-      # left alone.
+      # Called by handler whenever it receives a worker heartbeat. 
+      #
       def process_heartbeat(message = nil)
-        if message && (message.heartbeat_interval < @heartbeat_interval || message.heartbeat_retries > @heartbeat_retries)
-          @reactor.log(:debug, "Resetting Worker [#{@identity}] HB interval and/or retries")
-
-          @heartbeat_interval = message.heartbeat_interval if message.heartbeat_interval < @heartbeat_interval
-          @heartbeat_retries = message.heartbeat_retries if message.heartbeat_retries > @heartbeat_retries
-
-          @heartbeat_timer.cancel if @heartbeat_timer
-          start_heartbeat
-        end
-
         @reactor.log(:debug, "On broker, worker [#{@identity}] received a HB message.")
         @hb_received_at = Time.now
       end

@@ -35,6 +35,7 @@ module RzmqBrokers
 
       def delete(worker)
         @workers.delete(worker.identity)
+        worker.die
         @reactor.log(:debug, "Service [#{name}] deleting worker, [#{worker_count}] remaining workers.")
       end
 
