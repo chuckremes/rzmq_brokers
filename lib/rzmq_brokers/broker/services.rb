@@ -13,7 +13,7 @@ module RzmqBrokers
 
       def register(service_name, identity, heartbeat_interval, heartbeat_retries, envelope)
         unless @services.has_key?(service_name)
-          @reactor.log(:info, "Services, creating service for [#{service_name}]")
+          @reactor.log(:info, "#{self.class}, Creating service for [#{service_name}]")
           @services[service_name] = @service_klass.new(@reactor, service_name, @handler)
         end
 

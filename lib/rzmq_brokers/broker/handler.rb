@@ -65,7 +65,7 @@ module RzmqBrokers
             if available_workers?(message.service_name)
               dispatch_client_work(message)
             else
-              @reactor.log(:info, "Broker, no workers to handle request; failed!")
+              @reactor.log(:info, "#{self.class}, No workers to handle request; failed!")
               send_client_failure(message.envelope_msgs, message)
             end
           end
@@ -90,7 +90,7 @@ module RzmqBrokers
       end
 
       def send_client_failure(return_address, message)
-        @reactor.log(:error, "Broker sending a client failure message.")
+        @reactor.log(:error, "#{self.class}, Broker sending a client failure message.")
         @router.write(return_address + @client_reply_failure_msg_klass.from_request(message).to_msgs)
       end
 
@@ -99,12 +99,12 @@ module RzmqBrokers
 
         if service
           # returns true if there are workers, false otherwise
-          @reactor.log(:debug, "Broker, found service for [#{service_name}]")
+          @reactor.log(:debug, "#{self.class}, Found service for [#{service_name}]")
           found = service.workers?
-          @reactor.log(:debug, "Broker, workers for [#{service_name}] found? [#{found}]")
+          @reactor.log(:debug, "#{self.class}, Workers for [#{service_name}] found? [#{found}]")
           found
         else
-          @reactor.log(:warn, "Broker, no service found for [#{service_name}]")
+          @reactor.log(:warn, "#{self.class}, No service found for [#{service_name}]")
           false
         end
       end
@@ -113,17 +113,17 @@ module RzmqBrokers
         worker_identity = message.envelope_identity
         if worker = @services.find_worker(worker_identity)
           # worker was already registered; got READY msg out of sequence
-          @reactor.log(:warn, "Worker [#{worker_identity}] already exists; force disconnect.")
+          @reactor.log(:warn, "#{self.class}, Worker [#{worker_identity}] already exists; force disconnect.")
           #disconnect_worker(worker)
           #@services.deregister(worker)
         else
           @services.register(message.service_name, worker_identity, message.heartbeat_interval, message.heartbeat_retries, message.envelope.dup)
-          @reactor.log(:info, "Activated worker [#{worker_identity}] for service [#{message.service_name}]")
+          @reactor.log(:info, "#{self.class}, Activated worker [#{worker_identity}] for service [#{message.service_name}]")
         end
       end
 
       def disconnect_worker(worker)
-        @reactor.log(:info, "Disconnecting a worker [#{worker.identity}] for service [#{worker.service_name}].")
+        @reactor.log(:info, "#{self.class}, Disconnecting a worker [#{worker.identity}] for service [#{worker.service_name}].")
         @router.write(worker.return_address + @worker_disconnect_msg_klass.new(worker.service_name).to_msgs)
         @services.deregister_worker(worker)
       end
@@ -140,38 +140,38 @@ module RzmqBrokers
 
       # pass in the worker; uses worker to build hb message and get return address
       def send_worker_heartbeat(worker)
-        @reactor.log(:debug, "Broker, heartbeat for worker [#{worker.identity}]")
+        @reactor.log(:debug, "#{self.class}, Heartbeat for worker [#{worker.identity}]")
         @router.write(worker.return_address + @worker_heartbeat_msg_klass.new.to_msgs)
       end
 
       def send_worker_request(worker, request)
-        @reactor.log(:debug, "Sending request to worker [#{worker.identity}]")
+        @reactor.log(:debug, "#{self.class}, Sending request to worker [#{worker.identity}]")
         @router.write(worker.return_address + @worker_request_msg_klass.from_client_request(request).to_msgs)
       end
 
       def send_client_reply_success(return_address, service_name, sequence_id, payload)
-        @reactor.log(:debug, "Broker, sending a successful reply to client.")
+        @reactor.log(:debug, "#{self.class}, Sending a successful reply to client.")
         @router.write(return_address + @client_reply_success_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
       def send_client_reply_failure(return_address, service_name, sequence_id, payload)
-        @reactor.log(:debug, "Broker, sending a failure reply to client.")
+        @reactor.log(:debug, "#{self.class}, Sending a failure reply to client.")
         @router.write(return_address + @client_reply_failure_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
       def dispatch_client_work(message)
-        @reactor.log(:error, "Called #dispatch_client_work. Should be overridden by subclass!")
+        @reactor.log(:error, "#{self.class}, Called #dispatch_client_work. Should be overridden by subclass!")
       end
 
       def process_worker_reply(message)
-        @reactor.log(:error, "Called #process_worker_reply. Should be overridden by subclass!")
+        @reactor.log(:error, "#{self.class}, Called #process_worker_reply. Should be overridden by subclass!")
       end
 
 
       private
 
       def configure_messages_classes(config)
-        @reactor.log(:error, "Called #configure_messages_classes. Should be overridden by subclass!")
+        @reactor.log(:error, "#{self.class}, Called #configure_messages_classes. Should be overridden by subclass!")
       end
       
       def valid_client?(message)

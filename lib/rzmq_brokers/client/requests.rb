@@ -24,12 +24,12 @@ module RzmqBrokers
 
       def process_reply(reply)
         if (request = find_active(reply.sequence_id))
-          @reactor.log(:debug, "Client found a request to match reply id #{reply.sequence_id.inspect}")
+          @reactor.log(:debug, "#{self.class}, Client found a request to match reply id #{reply.sequence_id.inspect}")
           request.process_reply(reply)
           close(request)
         else
-          @reactor.log(:warn, "Client could not find a request to match reply id #{reply.sequence_id.inspect}")
-          #@reactor.log(:debug, @requests.keys.inspect)
+          @reactor.log(:warn, "#{self.class}, Client could not find a request to match reply id #{reply.sequence_id.inspect}")
+          @reactor.log(:debug, @requests.keys.inspect)
         end
       end
       
@@ -37,6 +37,8 @@ module RzmqBrokers
       # with a new sequence_id.
       #
       def restart_all_with_client_id(client_id)
+        @reactor.log(:warn, "#{self.class}, Restarting all requests with new client id [#{client_id}]")
+        
         @requests.keys.each_with_index do |key, new_sequence_number|
           # create a new request from the current one but with the revised client_id and sequence_number
           request = @requests[key]

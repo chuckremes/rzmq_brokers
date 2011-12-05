@@ -9,16 +9,16 @@ module RzmqBrokers
         def dispatch_client_work(message)
           service = @services.find_service_by_name(message.service_name)
           if service && service.ready? && service.request_ok?(message)
-            @reactor.log(:info, "MajordomoBroker, adding client request.")
+            @reactor.log(:info, "#{self.class}, Adding client request.")
             # send request to workers
             service.add_request(message)
 
           else
             # tell client the request failed
             if !service.request_ok?(message)
-              @reactor.log(:warn, "MajordomoBroker, request was rejected; failed!")
+              @reactor.log(:warn, "#{self.class}, Request was rejected; failed!")
             else
-              @reactor.log(:warn, "MajordomoBroker, no service to handle request; failed!")
+              @reactor.log(:warn, "#{self.class}, No service to handle request; failed!")
             end
 
             send_client_failure(message.envelope_msgs, message)

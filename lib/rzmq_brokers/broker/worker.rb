@@ -26,7 +26,7 @@ module RzmqBrokers
       end
 
       def start_heartbeat
-        @reactor.log(:debug, "Worker [#{@identity}] for service [#{@service_name}] starting heartbeat with interval [#{@heartbeat_interval}]")
+        @reactor.log(:debug, "#{self.class}, Worker [#{@identity}] for service [#{@service_name}] starting heartbeat with interval [#{@heartbeat_interval}]")
         @heartbeat_timer = @reactor.periodical_timer(@heartbeat_interval) { beat }
       end
 
@@ -37,14 +37,14 @@ module RzmqBrokers
       # Called by handler whenever it receives a worker heartbeat. 
       #
       def process_heartbeat(message = nil)
-        @reactor.log(:debug, "On broker, worker [#{@identity}] received a HB message.")
+        @reactor.log(:debug, "#{self.class}, On broker, worker [#{@identity}] received a HB message.")
         @hb_received_at = Time.now
       end
 
       # Called when the worker has sent a DISCONNECT or its heartbeats have timed out.
       #
       def die
-        @reactor.log(:info, "Worker [#{@identity}] is exiting.")
+        @reactor.log(:info, "#{self.class}, Worker [#{@identity}] is exiting.")
         @heartbeat_timer.cancel
       end
 
@@ -56,7 +56,7 @@ module RzmqBrokers
         elapsed = ((Time.now - @hb_received_at) * 1_000)
 
         if elapsed > (@heartbeat_interval * @heartbeat_retries)
-          @reactor.log(:warn, "Broker Worker [#{@identity}] expiring, last received hb at #{@hb_received_at}")
+          @reactor.log(:warn, "#{self.class}, Broker Worker [#{@identity}] expiring, last received hb at #{@hb_received_at}")
           true
         else
           false

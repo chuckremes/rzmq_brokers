@@ -26,7 +26,7 @@ module RzmqBrokers
 
       def on_read(socket, messages, envelope)
         message = @base_msg_klass.create_from(messages, envelope)
-        @reactor.log(:debug, "Worker, reading message #{message.inspect}")
+        @reactor.log(:debug, "#{self.class}, Reading message #{message.inspect}")
 
         @hb_received_at = Time.now # receiving *any* message resets the heartbeat timer
 
@@ -41,7 +41,7 @@ module RzmqBrokers
 
       def send_readiness_to_broker
         message = @worker_ready_msg_klass.new(@service_name, @heartbeat_interval, @heartbeat_retries)
-        @reactor.log(:info, "Worker, sending READY for service [#{@service_name}] with HB interval [#{@heartbeat_interval}] and retries [#{@heartbeat_retries}]")
+        @reactor.log(:info, "#{self.class}, Sending READY for service [#{@service_name}] with HB interval [#{@heartbeat_interval}] and retries [#{@heartbeat_retries}]")
         write_messages(@base_msg_klass.delimiter + message.to_msgs)
         start_heartbeat
         start_broker_timer
@@ -49,7 +49,7 @@ module RzmqBrokers
 
       def disconnect_from_broker
         message = @worker_disconnect_msg_klass.new(@service_name)
-        @reactor.log(:info, "Worker, sending DISCONNECT for  [#{@service_name}]; canceling broker timer.")
+        @reactor.log(:info, "#{self.class}, Sending DISCONNECT for  [#{@service_name}]; canceling broker timer.")
         write_messages(@base_msg_klass.delimiter + message.to_msgs)
         @broker_timer.cancel
       end
@@ -58,22 +58,22 @@ module RzmqBrokers
       # determine Broker health.
       #
       def process_heartbeat(message)
-        @reactor.log(:debug, "Worker received HB from broker at [#{@hb_received_at}].")
+        @reactor.log(:debug, "#{self.class}, Worker received HB from broker at [#{@hb_received_at}].")
       end
 
       def process_request(message)
-        @reactor.log(:debug, "Worker received work request.")
+        @reactor.log(:debug, "#{self.class}, Worker received work request.")
         @on_request.call(self, message)
       end
 
       def send_success_reply_to_broker(sequence_id, payload)
-        @reactor.log(:debug, "Worker sending a successful reply to broker.")
+        @reactor.log(:debug, "#{self.class}, Worker sending a successful reply to broker.")
         reply = @base_msg_klass.delimiter + @worker_reply_success_msg_klass.new(sequence_id, payload).to_msgs
         write_messages(reply)
       end
 
       def send_failure_reply_to_broker(sequence_id, payload)
-        @reactor.log(:debug, "Worker sending a failure reply to broker.")
+        @reactor.log(:debug, "#{self.class}, Worker sending a failure reply to broker.")
         reply = @base_msg_klass.delimiter + @worker_reply_failure_msg_klass.new(sequence_id, payload).to_msgs
         write_messages(reply)
       end
@@ -83,16 +83,16 @@ module RzmqBrokers
       # and open a new one.
       def broker_check
         unless ((Time.now - @hb_received_at) * 1_000) <= (@heartbeat_interval * @heartbeat_retries)
-          @reactor.log(:warn, "Worker [#{@service_name}] is missing expected heartbeats from broker! Broker timeout!")
-          @reactor.log(:warn, "Worker [#{@service_name}] last saw a heartbeat at [#{@hb_received_at}] and is now [#{Time.now}]")
+          @reactor.log(:warn, "#{self.class}, Worker [#{@service_name}] is missing expected heartbeats from broker! Broker timeout!")
+          @reactor.log(:warn, "#{self.class}, Worker [#{@service_name}] last saw a heartbeat at [#{@hb_received_at}] and is now [#{Time.now}]")
           reconnect_broker
         else
-          @reactor.log(:info, "Worker [#{@service_name}] sees a healthy broker, time now [#{Time.now}]")
+          @reactor.log(:info, "#{self.class}, Worker [#{@service_name}] sees a healthy broker, time now [#{Time.now}]")
         end
       end
 
       def succeeded(sequence_id, payload)
-        @reactor.log(:debug, "Worker, sending a success reply.")
+        @reactor.log(:debug, "#{self.class}, Sending a success reply.")
         send_success_reply_to_broker(sequence_id, payload)
       end
 
@@ -106,7 +106,7 @@ module RzmqBrokers
 
       def write_messages(messages)
         @hb_sent_at = Time.now
-        @reactor.log(:debug, "Worker, sending a message and updating its hb_sent_at to [#{@hb_sent_at}].")
+        @reactor.log(:debug, "#{self.class}, Sending a message and updating its hb_sent_at to [#{@hb_sent_at}].")
         write(messages)
       end
 
@@ -126,7 +126,7 @@ module RzmqBrokers
         # messages sent to the broker (READY, REPLY) are equivalent to heartbeats
         if ((Time.now - @hb_sent_at) * 1_000) >= @heartbeat_interval
           message = @worker_heartbeat_msg_klass.new
-          @reactor.log(:debug, "Worker, sending HEARTBEAT")
+          @reactor.log(:debug, "#{self.class}, Sending HEARTBEAT")
           write_messages(@base_msg_klass.delimiter + message.to_msgs)
         end
       end
@@ -136,7 +136,7 @@ module RzmqBrokers
       end
 
       def reconnect_broker
-        @reactor.log(:warn, "Worker exceeded broker tries; reconnecting!")
+        @reactor.log(:warn, "#{self.class}, Worker exceeded broker tries; reconnecting!")
         @heartbeat_timer.cancel if @heartbeat_timer
         @broker_timer.cancel if @broker_timer
         reopen_socket

@@ -21,6 +21,8 @@
     HEARTBEAT, update its intervals, and then wait another interval before
     sending a message. By including the interval and retry information in
     the READY message, we avoid all of these timing issues.
+    
+  * Improved some logging.
 
 == 0.6.0 / 2011-11-30
   * Changed Broker to send a payload in the ClientReplyFailure message.

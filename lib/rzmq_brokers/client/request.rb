@@ -33,7 +33,7 @@ module RzmqBrokers
       
       def resend
         @try_count += 1
-        @reactor.log(:info, "Request id [#{@sequence_id.inspect}] sent [#{@try_count}] times.")
+        @reactor.log(:info, "#{self.class}, Request id [#{@sequence_id.inspect}] sent [#{@try_count}] times.")
         @handler.send_request(@service_name, @sequence_id, @payload)
         set_timer if timeout_desired?
       end
@@ -48,9 +48,14 @@ module RzmqBrokers
         cancel_timer
 
         if reply.success_reply?
+          @reactor.log(:debug, "#{self.class}, Processing successful reply.")
           @handler.on_success(self, reply)
         elsif reply.failure_reply?
+          @reactor.log(:debug, "#{self.class}, Processing failed reply.")
           @handler.on_failure(self, reply)
+        else
+          @reactor.log(:error, "#{self.class}, Processing UNKNOWN reply.")
+          @reactor.log(:error, reply.inspect)
         end
       end
 
@@ -61,10 +66,10 @@ module RzmqBrokers
       def on_timeout
         @failed_at = Time.now
         @timer = nil
-        @reactor.log(:warn, "Request id [#{@sequence_id.inspect}] timed out at [#{@failed_at}].")
+        @reactor.log(:warn, "#{self.class}, Request id [#{@sequence_id.inspect}] timed out at [#{@failed_at}].")
 
         if retries_exceeded?
-          @reactor.log(:warn, "Request id [#{@sequence_id.inspect}] retries exceeded; force fail.")
+          @reactor.log(:warn, "#{self.class}, Request id [#{@sequence_id.inspect}] retries exceeded; force fail.")
           @handler.on_failure(self)
         else
           resend

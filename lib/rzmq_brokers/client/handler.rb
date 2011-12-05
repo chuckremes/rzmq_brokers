@@ -38,14 +38,14 @@ module RzmqBrokers
 
       def send_request(service_name, sequence_id, payload)
         message = @client_request_msg_klass.new(service_name, sequence_id, payload)
-        @reactor.log(:debug, "client, sending request #{message.inspect}")
+        @reactor.log(:debug, "#{self.class}, Sending request #{message.inspect}")
         write(@base_msg_klass.delimiter + message.to_msgs)
       end
 
       def process_request(message, request_options = nil)
         request_options ||= RequestOptions.new
         message.sequence_id = get_sequence_id
-        @reactor.log(:debug, "client, processing request #{message.inspect}")
+        @reactor.log(:debug, "#{self.class}, Processing request #{message.inspect}")
         @requests.add(message, request_options)
       end
 
@@ -77,7 +77,7 @@ module RzmqBrokers
       # also regenerate our client ID before reconnecting.
       #
       def timeouts_exceeded
-        @reactor.log(:warn, "Client exceeded allowable [#{@max_broker_timeouts}] timeout failures; reopening socket to Broker!")
+        @reactor.log(:warn, "#{self.class}, Client exceeded allowable [#{@max_broker_timeouts}] timeout failures; reopening socket to Broker!")
 
         # active requests that haven't timed out & failed will still have the old
         # client ID; we need to restart those requests with the new ID
