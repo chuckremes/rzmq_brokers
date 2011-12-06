@@ -23,17 +23,19 @@ module RzmqBrokers
       # Deletes the named service and all of its workers.
       #
       def deregister(service_name)
-        service = @services[service_name]
+        @reactor.log(:info, "#{self.class}, Deregister service [#{service_name}]")
+        service = @services.delete(service_name)
 
         if service
+          @reactor.log(:info, "#{self.class}, Found [#{service_name}], deleting all workers.")
           service.each { |worker| service.delete(worker) }
-          @services.delete(service_name)
         end
       end
 
       # Deletes the given worker from the service to which it belongs.
       #
       def deregister_worker(worker)
+        @reactor.log(:info, "#{self.class}, Deregister worker [#{worker.identity}]")
         service = @services[worker.service_name]
         service && service.delete(worker)
       end
