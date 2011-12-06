@@ -21,6 +21,8 @@ module RzmqBrokers
         server_config = ZM::Server::Configuration.create_from(@config)
         server_config.on_read(method(:on_read))
         super(server_config)
+        
+        raise "Worker is misconfigured!" unless @service_name && @on_request && @on_disconnect && @heartbeat_interval
         send_readiness_to_broker
       end
 
