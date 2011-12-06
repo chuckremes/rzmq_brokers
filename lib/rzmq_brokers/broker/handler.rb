@@ -30,11 +30,6 @@ module RzmqBrokers
           elsif message.worker?
             @broker.process_worker(message)
           end
-
-          # this can expire workers before they get a chance to work; this happens
-          # due to resource starvation where the client is sending so many requests
-          # that we never get a chance to process any worker replies.
-          @broker.purge_expired_workers
         end
       end # class Router
 
@@ -55,6 +50,13 @@ module RzmqBrokers
         @config.worker_klass || Worker)
         
         @clients = ClientTracker.new(@reactor, @config.client_expiration_secs)
+        
+        # we only try to purge expired workers once per second. This is superior to
+        # trying to purge them on *every* incoming message. In that situation when 
+        # there is no activity, expired workers aren't reaped until a new message
+        # arrives. One check per second eliminates a lot of work at the expense of
+        # allowing an expired worker to live up to 1s longer than it should.
+        @worker_purge_timer = @reactor.periodical_timer(1_000) { purge_expired_workers }
 
         configure_messages_classes(@config)
       end
@@ -85,6 +87,8 @@ module RzmqBrokers
         end
       end
 
+      # Called periodically to purge workers.
+      #
       def purge_expired_workers
         @services.purge_expired_workers
       end
