@@ -10,6 +10,9 @@ module RzmqBrokers
       # is sent to the originating Client. Any worker timeouts or failure replies
       # cause the entire Request to fail.
       #
+      # A worker disconnect does not cause an immediate consensus failure. It is
+      # processed but the disconnect is ignored in the context of the request.
+      #
       class Service < RzmqBrokers::Broker::Service
         class Requests
           class Request
@@ -59,6 +62,13 @@ module RzmqBrokers
             def close
               send_client_reply_failure unless satisfied?
             end
+            
+            # Called when a Worker has disconnected from the Broker and no longer should be
+            # considered part of the consensus. If that worker was already sent a request,
+            # we just drop the worker from the reply list.
+            def ignore_reply_from(worker)
+              @replies.delete(worker.identity)
+            end
           end # class Request
 
 
@@ -71,7 +81,7 @@ module RzmqBrokers
             @handler = handler
 
             @open = Hash.new # key is sequence_no
-            @closed = Array.new
+            @closed = SortedArray.new
           end
 
           def each
@@ -113,6 +123,11 @@ module RzmqBrokers
             @open.delete(seq_no)
             request.close
           end
+          
+          # Called when a worker has requested disconnection from the consensus.
+          def remove_worker(worker, request)
+            request.ignore_reply_from(worker)
+          end
         end # class Requests
 
 
@@ -125,11 +140,11 @@ module RzmqBrokers
         
         def delete(worker)
           super
-          fail_open_requests
+          remove_from_open_requests(worker)
         end
 
         def request_ok?(message)
-          !@requests.duplicate?(message) && !@requests.closed?(message)
+          !@requests.duplicate?(message)
         end
 
         def ready?
@@ -151,8 +166,8 @@ module RzmqBrokers
           @requests.process_reply(message)
         end
 
-        def fail_open_requests
-          @requests.each { |request| close_request(request) }
+        def remove_from_open_requests(worker)
+          @requests.each { |request| @requests.remove_worker(worker, request) }
         end
       end # class Service
 
