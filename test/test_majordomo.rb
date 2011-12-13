@@ -108,7 +108,8 @@ class Dummy
 
       base_msg_klass RzmqBrokers::Majordomo::Messages
     end
-    
+
+    @mutex = Mutex.new
     @responses = Hash.new { |h,k| h[k] = 0 }
 
     sleep 1
@@ -134,9 +135,11 @@ class Dummy
   end
 
   def success(message)
-    #puts "success"
-    @received += 1
-    @responses[message.sequence_id.at(1)] += 1
+    @mutex.synchronize do
+      #puts "success"
+      @received += 1
+      @responses[message.sequence_id.at(1)] += 1
+    end
 
     if @received < Total
       print "SUCCESS, received [#{@received}] total responses. Last contained sequence_id #{message.sequence_id.inspect}.\n"
