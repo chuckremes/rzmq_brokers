@@ -121,7 +121,7 @@ module RzmqBrokers
       end
       
       # Empty placeholder so that Client::Handler.process_request works with a regular
-      # RzmqBrokers::Messages::ClientRequest as input. The RzmqBrokers::Client::Requests
+      # RzmqBrokers::Messages::Request as input. The RzmqBrokers::Client::Requests
       # class needs each message it receives to answer to #service_name, #sequence_id
       # and #encode. This placeholder satisfies the final requirement.
       def encode

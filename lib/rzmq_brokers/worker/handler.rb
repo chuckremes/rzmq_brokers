@@ -42,7 +42,7 @@ module RzmqBrokers
       end
 
       def send_readiness_to_broker
-        message = @worker_ready_msg_klass.new(@service_name, @heartbeat_interval, @heartbeat_retries)
+        message = @ready_msg_klass.new(@service_name, @heartbeat_interval, @heartbeat_retries)
         @reactor.log(:info, "#{self.class}, Sending READY for service [#{@service_name}] with HB interval [#{@heartbeat_interval}] and retries [#{@heartbeat_retries}]")
         write_messages(@base_msg_klass.delimiter + message.to_msgs)
         start_heartbeat
@@ -50,7 +50,7 @@ module RzmqBrokers
       end
 
       def disconnect_from_broker
-        message = @worker_disconnect_msg_klass.new(@service_name)
+        message = @disconnect_msg_klass.new(@service_name)
         @reactor.log(:info, "#{self.class}, Sending DISCONNECT for  [#{@service_name}]; canceling broker timer.")
         write_messages(@base_msg_klass.delimiter + message.to_msgs)
         @broker_timer.cancel
@@ -70,13 +70,13 @@ module RzmqBrokers
 
       def send_success_reply_to_broker(sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Worker sending a successful reply to broker.")
-        reply = @base_msg_klass.delimiter + @worker_reply_success_msg_klass.new(sequence_id, payload).to_msgs
+        reply = @base_msg_klass.delimiter + @reply_success_msg_klass.new(@service_name, sequence_id, payload).to_msgs
         write_messages(reply)
       end
 
       def send_failure_reply_to_broker(sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Worker sending a failure reply to broker.")
-        reply = @base_msg_klass.delimiter + @worker_reply_failure_msg_klass.new(sequence_id, payload).to_msgs
+        reply = @base_msg_klass.delimiter + @reply_failure_msg_klass.new(@service_name, sequence_id, payload).to_msgs
         write_messages(reply)
       end
 
@@ -118,16 +118,14 @@ module RzmqBrokers
       def start_heartbeat
         @hb_received_at = Time.now
         send_heartbeat
-        @heartbeat_timer = @reactor.periodical_timer(@heartbeat_interval) do
-          send_heartbeat
-        end
+        @heartbeat_timer = @reactor.periodical_timer(@heartbeat_interval) { send_heartbeat }
       end
 
       def send_heartbeat
         # do not send more than 1 HB per interval; this check is necessary because *other*
         # messages sent to the broker (READY, REPLY) are equivalent to heartbeats
         if ((Time.now - @hb_sent_at) * 1_000) >= @heartbeat_interval
-          message = @worker_heartbeat_msg_klass.new
+          message = @heartbeat_msg_klass.new
           @reactor.log(:debug, "#{self.class}, Sending HEARTBEAT")
           write_messages(@base_msg_klass.delimiter + message.to_msgs)
         end
@@ -154,11 +152,11 @@ module RzmqBrokers
       def configure_messages_classes(config)
         @base_msg_klass = config.base_msg_klass.const_get('Message')
         parent = config.base_msg_klass
-        @worker_heartbeat_msg_klass = parent.const_get("WorkerHeartbeat")
-        @worker_reply_success_msg_klass = parent.const_get("WorkerReplySuccess")
-        @worker_reply_failure_msg_klass = parent.const_get("WorkerReplyFailure")
-        @worker_ready_msg_klass = parent.const_get("WorkerReady")
-        @worker_disconnect_msg_klass = parent.const_get("WorkerDisconnect")
+        @heartbeat_msg_klass = parent.const_get("Heartbeat")
+        @reply_success_msg_klass = parent.const_get("ReplySuccess")
+        @reply_failure_msg_klass = parent.const_get("ReplyFailure")
+        @ready_msg_klass = parent.const_get("Ready")
+        @disconnect_msg_klass = parent.const_get("Disconnect")
       end
     end # class Handler
 

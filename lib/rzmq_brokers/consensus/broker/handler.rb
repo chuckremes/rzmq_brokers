@@ -42,11 +42,11 @@ module RzmqBrokers
         def configure_messages_classes(config)
           @base_msg_klass = config.base_msg_klass.const_get('Message')
           parent = config.base_msg_klass
-          @client_reply_failure_msg_klass = parent.const_get("ClientReplyFailure")
-          @client_reply_success_msg_klass = parent.const_get("ClientReplySuccess")
-          @worker_heartbeat_msg_klass = parent.const_get("WorkerHeartbeat")
-          @worker_request_msg_klass = parent.const_get("WorkerRequest")
-          @worker_disconnect_msg_klass = parent.const_get("WorkerDisconnect")
+          @reply_failure_msg_klass = parent.const_get("ReplyFailure")
+          @reply_success_msg_klass = parent.const_get("ReplySuccess")
+          @heartbeat_msg_klass = parent.const_get("Heartbeat")
+          @request_msg_klass = parent.const_get("Request")
+          @disconnect_msg_klass = parent.const_get("Disconnect")
         end
       end # class Handler
 

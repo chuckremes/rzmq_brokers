@@ -8,7 +8,7 @@ module RzmqBrokers
     # delivery to the appropriate #on_success or #on_failure method.
     #
     # For a timeout, the #on_failure method is invoked with an empty 
-    # ClientReplyFailure message. The client can deduce from the empty
+    # ReplyFailure message. The client can deduce from the empty
     # payload that the request exceeded its timeout and retries.
     #
     class ActiveRequest

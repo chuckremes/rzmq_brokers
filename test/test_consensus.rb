@@ -13,6 +13,7 @@ class Dummy
   def  initialize(port)
     master_context = ZMQ::Context.new
     log_endpoint = 'inproc://reactor_log'
+    interval = nil # uses default when nil
 
     logger_config = ZM::Configuration.new do
       context master_context
@@ -33,75 +34,57 @@ class Dummy
       log_server = ZM::LogServer.new(log_config)
     end
 
-    broker_config = RzmqBrokers::Broker::Configuration.new do
-      name 'broker-reactor'
-      #log_endpoint log_endpoint
-      context master_context
-      exception_handler nil
+    broker_config = RzmqBrokers::Broker::Configuration.new
+    broker_config.name ='broker-reactor'
+    #broker_config.log_endpoint =log_endpoint
+    broker_config.context =master_context
+    broker_config.exception_handler= nil
+    broker_config.poll_interval= interval
 
-      broker_endpoint  "tcp://127.0.0.1:#{port}"
-      broker_bind  true
+    broker_config.broker_endpoint  ="tcp://127.0.0.1:#{port}"
+    broker_config.broker_bind = true
 
-      broker_klass RzmqBrokers::Consensus::Broker::Handler
-      service_klass RzmqBrokers::Consensus::Broker::Service
-      worker_klass RzmqBrokers::Broker::Worker
+    broker_config.broker_klass= RzmqBrokers::Consensus::Broker::Handler
+    broker_config.service_klass =RzmqBrokers::Consensus::Broker::Service
+    broker_config.worker_klass =RzmqBrokers::Broker::Worker
 
-      base_msg_klass RzmqBrokers::Consensus::Messages
-    end
+    broker_config.base_msg_klass= RzmqBrokers::Consensus::Messages
 
     succ, fail = method(:success), method(:failure)
-    client_config = RzmqBrokers::Client::Configuration.new do
-      name 'client-reactor'
-      #log_endpoint log_endpoint
-      context master_context
-      exception_handler nil
+    client_config = RzmqBrokers::Client::Configuration.new
+    client_config.name ='client-reactor'
+    #client_config.log_endpoint =log_endpoint
+    client_config.context =master_context
+    client_config.exception_handler= nil
+    client_config.poll_interval =interval
 
-      endpoint  "tcp://127.0.0.1:#{port}"
-      connect  true
-      service_name  "clock-lockstep"
-      heartbeat_interval 10_000
-      heartbeat_retries 3
-      on_success  succ
-      on_failure  fail
+    client_config.endpoint  ="tcp://127.0.0.1:#{port}"
+    client_config.connect = true
+    client_config.service_name  ="clock-lockstep"
+    client_config.heartbeat_interval= 10_000
+    client_config.heartbeat_retries= 3
+    client_config.on_success  =succ
+    client_config.on_failure = fail
 
-      base_msg_klass RzmqBrokers::Consensus::Messages
-    end
+    client_config.base_msg_klass= RzmqBrokers::Consensus::Messages
 
     w1, wd = method(:do_work1), method(:worker_disconnect)
-    @worker1_config = RzmqBrokers::Worker::Configuration.new do
-      name 'worker1-reactor'
-      #log_endpoint log_endpoint
-      context master_context
-      exception_handler nil
+    @worker1_config = RzmqBrokers::Worker::Configuration.new
+    @worker1_config.name ='worker1-reactor'
+    #@worker1_config.log_endpoint =log_endpoint
+    @worker1_config.context= master_context
+    @worker1_config.exception_handler= nil
+    @worker1_config.poll_interval =interval
 
-      endpoint  "tcp://127.0.0.1:#{port}"
-      connect  true
-      service_name  "clock-lockstep"
-      heartbeat_interval 5_000
-      heartbeat_retries 3
-      on_request  w1
-      on_disconnect wd
+    @worker1_config.endpoint  ="tcp://127.0.0.1:#{port}"
+    @worker1_config.connect  =true
+    @worker1_config.service_name  ="clock-lockstep"
+    @worker1_config.heartbeat_interval= 5_000
+    @worker1_config.heartbeat_retries= 3
+    @worker1_config.on_request  =w1
+    @worker1_config.on_disconnect =wd
 
-      base_msg_klass RzmqBrokers::Consensus::Messages
-    end
-
-    w2 = method(:do_work2)
-    worker2_config = RzmqBrokers::Worker::Configuration.new do
-      name 'worker2-reactor'
-      #log_endpoint log_endpoint
-      context master_context
-      exception_handler nil
-
-      endpoint  "tcp://127.0.0.1:#{port}"
-      connect  true
-      service_name  "clock-lockstep"
-      heartbeat_interval 8_000
-      heartbeat_retries 3
-      on_request  w2
-      on_disconnect wd
-
-      base_msg_klass RzmqBrokers::Consensus::Messages
-    end
+    @worker1_config.base_msg_klass =RzmqBrokers::Consensus::Messages
 
     sleep 1
     broker = RzmqBrokers::Broker::Broker.new(broker_config)
@@ -162,7 +145,7 @@ class Dummy
   end
 
   def run
-    msg = RzmqBrokers::Consensus::Messages::ClientRequest.new('clock-lockstep', nil, nil)
+    msg = RzmqBrokers::Consensus::Messages::Request.new('clock-lockstep', nil, nil)
     @client.process_request(msg)
   end
 

@@ -95,7 +95,7 @@ module RzmqBrokers
 
       def send_client_failure(return_address, message)
         @reactor.log(:error, "#{self.class}, Broker sending a client failure message.")
-        @router.write(return_address + @client_reply_failure_msg_klass.from_request(message).to_msgs)
+        @router.write(return_address + @reply_failure_msg_klass.from_request(message).to_msgs)
       end
 
       def available_workers?(service_name)
@@ -128,7 +128,7 @@ module RzmqBrokers
 
       def disconnect_worker(worker)
         @reactor.log(:info, "#{self.class}, Disconnecting a worker [#{worker.identity}] for service [#{worker.service_name}].")
-        @router.write(worker.return_address + @worker_disconnect_msg_klass.new(worker.service_name).to_msgs)
+        @router.write(worker.return_address + @disconnect_msg_klass.new(worker.service_name).to_msgs)
         @services.deregister_worker(worker)
       end
 
@@ -145,22 +145,22 @@ module RzmqBrokers
       # pass in the worker; uses worker to build hb message and get return address
       def send_worker_heartbeat(worker)
         @reactor.log(:debug, "#{self.class}, Heartbeat for worker [#{worker.identity}]")
-        @router.write(worker.return_address + @worker_heartbeat_msg_klass.new.to_msgs)
+        @router.write(worker.return_address + @heartbeat_msg_klass.new.to_msgs)
       end
 
       def send_worker_request(worker, request)
         @reactor.log(:debug, "#{self.class}, Sending request to worker [#{worker.identity}]")
-        @router.write(worker.return_address + @worker_request_msg_klass.from_client_request(request).to_msgs)
+        @router.write(worker.return_address + request.to_msgs)
       end
 
       def send_client_reply_success(return_address, service_name, sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Sending a successful reply to client.")
-        @router.write(return_address + @client_reply_success_msg_klass.new(service_name, sequence_id, payload).to_msgs)
+        @router.write(return_address + @reply_success_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
       def send_client_reply_failure(return_address, service_name, sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Sending a failure reply to client.")
-        @router.write(return_address + @client_reply_failure_msg_klass.new(service_name, sequence_id, payload).to_msgs)
+        @router.write(return_address + @reply_failure_msg_klass.new(service_name, sequence_id, payload).to_msgs)
       end
 
       def dispatch_client_work(message)

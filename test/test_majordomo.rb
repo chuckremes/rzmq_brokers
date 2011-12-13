@@ -108,6 +108,8 @@ class Dummy
 
       base_msg_klass RzmqBrokers::Majordomo::Messages
     end
+    
+    @responses = Hash.new { |h,k| h[k] = 0 }
 
     sleep 1
     broker = RzmqBrokers::Broker::Broker.new(broker_config) # new thread
@@ -131,12 +133,14 @@ class Dummy
     end
   end
 
-  def success(*args)
+  def success(message)
     #puts "success"
     @received += 1
+    @responses[message.sequence_id.at(1)] += 1
 
     if @received < Total
-      #run
+      print "SUCCESS, received [#{@received}] total responses. Last contained sequence_id #{message.sequence_id.inspect}.\n"
+      p @responses
     else
       elapsed = Time.now - @start
       rtt = (elapsed / Total) * 1_000
@@ -171,7 +175,7 @@ class Dummy
     while @sent < Total
       @clients.each do |client|
         @sent += 1
-        msg = RzmqBrokers::Majordomo::Messages::ClientRequest.new('db-lookup', nil, nil)
+        msg = RzmqBrokers::Majordomo::Messages::Request.new('db-lookup', nil, nil)
         client.process_request(msg)
       end
     end

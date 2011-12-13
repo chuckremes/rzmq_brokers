@@ -32,7 +32,6 @@ module RzmqBrokers
 
         if message.success_reply? || message.failure_reply?
           @requests.process_reply(message)
-        elsif message.heartbeat?
         end
       end
 
@@ -40,7 +39,7 @@ module RzmqBrokers
       # and from the Request#resend method.
       #
       def send_request(service_name, sequence_id, payload)
-        message = @client_request_msg_klass.new(service_name, sequence_id, payload)
+        message = @request_msg_klass.new(service_name, sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Sending request #{message.inspect}")
         write(@base_msg_klass.delimiter + message.to_msgs)
       end
@@ -64,7 +63,7 @@ module RzmqBrokers
             timeouts_exceeded
             return
           else
-            message = @client_reply_failure_msg_klass.new(request.service_name, request.sequence_id, nil)
+            message = @reply_failure_msg_klass.new(request.service_name, request.sequence_id, nil)
           end
         end
         
@@ -106,9 +105,9 @@ module RzmqBrokers
       def configure_messages_classes(config)
         @base_msg_klass = config.base_msg_klass.const_get('Message')
         parent = config.base_msg_klass
-        @client_request_msg_klass = parent.const_get('ClientRequest')
-        @client_reply_success_msg_klass = parent.const_get('ClientReplySuccess')
-        @client_reply_failure_msg_klass = parent.const_get('ClientReplyFailure')
+        @request_msg_klass = parent.const_get('Request')
+        @reply_success_msg_klass = parent.const_get('ReplySuccess')
+        @reply_failure_msg_klass = parent.const_get('ReplyFailure')
       end
 
       def generate_client_id
