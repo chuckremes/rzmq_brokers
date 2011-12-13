@@ -21,6 +21,10 @@ module RzmqBrokers
       i = index(value) - 1
       @array.delete_at(i) if value == @array.at(i)
     end
+    
+    def delete_at(i)
+      @array.delete_at(i)
+    end
 
     def insert(value)
       @array.insert(index(value), value)
@@ -28,6 +32,17 @@ module RzmqBrokers
     alias :<< :insert
     alias :push :insert
     alias :unshift :insert
+    
+    def direct_insert(i, value)
+      @array.insert(i, value)
+    end
+    
+    def at(i)
+      @array.at(i)
+    end
+    alias :[] :at
+    
+    def size() @array.size; end
 
     # Original Ruby source Posted by Sergey Chernov (sergeych) on 2010-05-13 20:23
     # http://www.ruby-forum.com/topic/134477

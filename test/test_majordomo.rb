@@ -1,6 +1,8 @@
-require 'rubygems'
+require 'rubygems' # for zmqmachine
 
-require File.join("..", "lib", "rzmq-brokers")
+$:.push(File.expand_path('../lib', File.dirname(__FILE__)))
+
+require "rzmq_brokers"
 
 Thread.abort_on_exception = true
 
@@ -111,6 +113,7 @@ class Dummy
     broker = RzmqBrokers::Broker::Broker.new(broker_config) # new thread
     @workers = []
     @clients = []
+    @reactor = ZM::Reactor.new(ZM::Configuration.create_from(logger_config)).run
 
     WORKERS.times do |i|
       puts "creating worker #{i}"
@@ -138,7 +141,7 @@ class Dummy
       elapsed = Time.now - @start
       rtt = (elapsed / Total) * 1_000
       puts "DONE!, rtt [#{rtt}] ms per iteration for [#{@received}] iterations in [#{elapsed}] seconds"
-      exit
+      exit!
     end
   end
 
@@ -149,11 +152,15 @@ class Dummy
   end
 
   def do_work1(worker, message)
-    worker.succeeded(message.sequence_id, nil)
+    @reactor.next_tick do
+      worker.succeeded(message.sequence_id, nil)
+    end
   end
 
   def do_work2(worker, message)
-    worker.succeeded(message.sequence_id, nil)
+    @reactor.next_tick do
+      worker.succeeded(message.sequence_id, nil)
+    end
   end
 
   def worker_disconnect(message)
@@ -164,7 +171,8 @@ class Dummy
     while @sent < Total
       @clients.each do |client|
         @sent += 1
-        client.send_request('db-lookup', nil)
+        msg = RzmqBrokers::Majordomo::Messages::ClientRequest.new('db-lookup', nil, nil)
+        client.process_request(msg)
       end
     end
     print "\n\nDone sending all requests.\n\n"

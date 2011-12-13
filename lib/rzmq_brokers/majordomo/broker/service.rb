@@ -65,7 +65,7 @@ module RzmqBrokers
             @handler = handler
 
             @open = Hash.new # key is sequence_no
-            @closed = Array.new
+            @closed = SortedArray.new
             @queue = Array.new
           end
 
@@ -167,7 +167,6 @@ module RzmqBrokers
         # everything.
         #
         def request_ok?(message)
-          #!@requests.duplicate?(message) && !@requests.closed?(message)
           true
         end
 

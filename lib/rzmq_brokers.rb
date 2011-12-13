@@ -4,6 +4,8 @@ require 'uuid'
 
 require "rzmq_brokers/version"
 
+require 'rzmq_brokers/sorted_array'
+
 require 'rzmq_brokers/messages/message'
 
 require 'rzmq_brokers/broker/configuration'

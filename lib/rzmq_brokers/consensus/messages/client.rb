@@ -21,7 +21,7 @@ module RzmqBrokers
           end
         end
 
-        attr_reader :sequence_id
+        attr_accessor :sequence_id
 
         def initialize(service_name, sequence_id, payload, envelope = nil)
           @service_name = service_name
@@ -58,7 +58,7 @@ module RzmqBrokers
       # 0  - protocol header
       # 1  - CLIENT_REPLY_FAILURE
       # 2  - service name
-      # 3  - sequence number, uint64, big-endian
+      # 3  - sequence ID, 16-byte uuid + uint64, big-endian
       # 4+ - reply payload
       #
       class ClientReplyFailure < ClientMessage
@@ -80,7 +80,7 @@ module RzmqBrokers
       # 0  - protocol header
       # 1  - CLIENT_REPLY_SUCCESS
       # 2  - service name
-      # 3  - sequence number, uint64, big-endian
+      # 3  - sequence ID, 16-byte uuid + uint64, big-endian
       # 4+ - reply payload
       #
       class ClientReplySuccess < ClientMessage
@@ -89,12 +89,6 @@ module RzmqBrokers
           sequence_id = sequence_decoder(frames.at(3).copy_out_string)
           payload = extract_payload(frames)
           new(service_name, sequence_id, payload, envelope)
-        end
-
-        def self.extract_payload(frames)
-          if frames.size > 4
-            frames[4..-1].map { |msg| msg.copy_out_string }
-          end
         end
 
         def initialize(service_name, sequence_id, payload, envelope = nil)

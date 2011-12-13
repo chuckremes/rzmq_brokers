@@ -21,7 +21,7 @@ module RzmqBrokers
           end
         end
 
-        attr_reader :sequence_id
+        attr_accessor :sequence_id
 
         def initialize(service_name, sequence_id, payload, envelope = nil)
           @service_name = service_name

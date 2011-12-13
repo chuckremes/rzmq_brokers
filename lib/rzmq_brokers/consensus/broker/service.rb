@@ -25,11 +25,6 @@ module RzmqBrokers
               @service.each { |worker| @replies[worker.identity] = nil }
             end
 
-            def duplicate_reply?(message)
-              # true when we have already recorded a reply
-              @replies[message.envelope_identity]
-            end
-
             def save_reply(message)
               if message.failure_reply?
                 @service.close_request(self)
@@ -102,25 +97,35 @@ module RzmqBrokers
           end
 
           def closed?(message)
-            @closed.include?(message.sequence_id)
+            # no op
           end
 
           def duplicate?(message)
-            open?(message) || closed?(message)
+            open?(message)
           end
 
           def process_reply(message)
             if open?(message)
-              unless (request = @open[message.sequence_id]).duplicate_reply?(message)
-                request.save_reply(message)
-              end
+              request = @open[message.sequence_id]
+              request.save_reply(message)
             end
           end
 
           def close(request)
             seq_no = @open.respond_to?(:key) ? @open.key(request) : @open.index(request)
-            @closed << seq_no
-            @open.delete(seq_no)
+
+            index = @closed.index(seq_no) - 1
+            old_seq_id = @closed[index]
+
+            if old_seq_id && old_seq_id[1] == seq_no[1]
+              @closed.delete_at(index)
+              @closed.direct_insert(index, seq_no)
+            else
+              # wasn't found, so the index is no good for a direct insert
+              @closed.insert(seq_no)
+            end            
+
+            @open.clear # there is only ever 1 open at a time, so just clear it
             request.close
           end
           

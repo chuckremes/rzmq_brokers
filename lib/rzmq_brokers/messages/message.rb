@@ -57,8 +57,8 @@ module RzmqBrokers
         str.each_byte do |num|
           i1 = num >> 4
           i2 = num & 15
-          result << hex_chars[i1..i1]
-          result << hex_chars[i2..i2]
+          result << hex_chars[i1]
+          result << hex_chars[i2]
         end
         result
       end
@@ -118,6 +118,14 @@ module RzmqBrokers
           # payload is not a message part; treat as nil
           [ZMQ::Message.new]
         end
+      end
+      
+      # Empty placeholder so that Client::Handler.process_request works with a regular
+      # RzmqBrokers::Messages::ClientRequest as input. The RzmqBrokers::Client::Requests
+      # class needs each message it receives to answer to #service_name, #sequence_id
+      # and #encode. This placeholder satisfies the final requirement.
+      def encode
+        # no op
       end
     end # module MessageInstanceMethods
 

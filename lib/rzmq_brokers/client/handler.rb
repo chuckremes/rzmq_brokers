@@ -36,6 +36,9 @@ module RzmqBrokers
         end
       end
 
+      # Shouldn't be called directly by user code. This is a helper called via #process_request
+      # and from the Request#resend method.
+      #
       def send_request(service_name, sequence_id, payload)
         message = @client_request_msg_klass.new(service_name, sequence_id, payload)
         @reactor.log(:debug, "#{self.class}, Sending request #{message.inspect}")

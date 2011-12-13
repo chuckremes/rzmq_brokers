@@ -107,19 +107,11 @@ module RzmqBrokers
         def heartbeat?() true; end
 
         def to_msgs
-          super + [heartbeat_msg, heartbeat_interval_msg, heartbeat_retries_msg]
+          super + [heartbeat_msg]
         end
 
         def heartbeat_msg
           ZMQ::Message.new(WORKER_HEARTBEAT)
-        end
-
-        def heartbeat_interval_msg
-          ZMQ::Message.new(Message.heartbeat_interval_encoder(@heartbeat_interval))
-        end
-
-        def heartbeat_retries_msg
-          ZMQ::Message.new(Message.heartbeat_retries_encoder(@heartbeat_retries))
         end
       end # class WorkerHeartbeat
 

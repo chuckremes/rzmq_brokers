@@ -28,8 +28,9 @@ module RzmqBrokers
         end
 
         def process_worker_reply(message)
-          @reactor.log(:info, "ConsensusBroker, received worker reply #{message.inspect}")
           worker_identity = message.envelope_identity
+          @reactor.log(:info, "ConsensusBroker, received reply from worker [#{worker_identity}], msg #{message.inspect}")
+
           if service = @services.find_service_by_worker_identity(worker_identity)
             service.process_reply(message)
           end
