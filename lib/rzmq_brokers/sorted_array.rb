@@ -2,7 +2,7 @@
 module RzmqBrokers
 
   # Wraps a regular Array. Makes sure that all inserts are done in
-  # sorted order (inserted objects must be Comparable). 
+  # sorted order (inserted objects must be Comparable).
   #
   # Searches take advantage of the sorted order to quickly find items.
   #
@@ -21,7 +21,7 @@ module RzmqBrokers
       i = index(value) - 1
       @array.delete_at(i) if value == @array.at(i)
     end
-    
+
     def delete_at(i)
       @array.delete_at(i)
     end
@@ -32,16 +32,16 @@ module RzmqBrokers
     alias :<< :insert
     alias :push :insert
     alias :unshift :insert
-    
+
     def direct_insert(i, value)
       @array.insert(i, value)
     end
-    
+
     def at(i)
       @array.at(i)
     end
     alias :[] :at
-    
+
     def size() @array.size; end
 
     # Original Ruby source Posted by Sergey Chernov (sergeych) on 2010-05-13 20:23
@@ -52,14 +52,17 @@ module RzmqBrokers
     def index(value)
       l, r = 0, @array.size - 1
 
-      while l <= r
-        m = (r + l) / 2
+      # if r == 0, then the array is empty; don't iterate
+      if r > 0
+        while l <= r
+          m = (r + l) / 2
 
-        # similar to (value < @array.at(m)) but works with anything Comparable
-        if -1 == (value <=> @array.at(m))
-          r = m - 1
-        else
-          l = m + 1
+          # similar to (value < @array.at(m)) but works with anything Comparable
+          if -1 == (value <=> @array.at(m))
+            r = m - 1
+          else
+            l = m + 1
+          end
         end
       end
       l
