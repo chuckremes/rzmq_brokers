@@ -18,6 +18,7 @@ module RzmqBrokers
 
         @on_success = @config.on_success
         @on_failure = @config.on_failure
+        @on_ping = @config.on_ping
 
         @requests = Requests.new(@reactor, self)
 
@@ -32,6 +33,8 @@ module RzmqBrokers
 
         if message.success_reply? || message.failure_reply?
           @requests.process_reply(message)
+        elsif message.ping?
+          @on_ping.call
         end
       end
 
@@ -49,6 +52,11 @@ module RzmqBrokers
         message.sequence_id = get_sequence_id
         @reactor.log(:debug, "#{self.class}, Processing request #{message.inspect}")
         @requests.add(message, request_options)
+      end
+      
+      def send_ping
+        @reactor.log(:debug, "#{self.class}, Processing ping")
+        write(@base_msg_klass.delimiter + @ping_msg_klass.to_msgs)
       end
 
       def on_success(request, message)
@@ -84,8 +92,14 @@ module RzmqBrokers
         # active requests that haven't timed out & failed will still have the old
         # client ID; we need to restart those requests with the new ID
         @broker_timeouts = 0
+        reopen_broker_connection
+      end
+      
+      def reopen_broker_connection
+        @reactor.log(:info, "#{self.class}, Requesting a new connection to the Broker.")
         reopen_socket
         @client_id = generate_client_id
+        @sequence_id = 1
         @requests.restart_all_with_client_id(@client_id)
       end
 
@@ -108,6 +122,7 @@ module RzmqBrokers
         @request_msg_klass = parent.const_get('Request')
         @reply_success_msg_klass = parent.const_get('ReplySuccess')
         @reply_failure_msg_klass = parent.const_get('ReplyFailure')
+        @ping_msg_klass = parent.const_get('Ping')
       end
 
       def generate_client_id
@@ -157,6 +172,14 @@ module RzmqBrokers
         # non-reactor thread. 0mq gets very upset if we try.
         #
         schedule { @handler.process_request(message, request_options) }
+      end
+      
+      def send_ping
+        schedule { @handler.send_ping }
+      end
+      
+      def reopen_broker_connection
+        schedule { @handler.reopen_broker_connection }
       end
 
 

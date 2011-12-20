@@ -13,6 +13,7 @@ class Dummy
   def  initialize(port)
     master_context = ZMQ::Context.new
     log_endpoint = 'inproc://reactor_log'
+    broker_endpoint = "inproc://broker_#{port}" # "tcp://127.0.0.1:#{port}"
     interval = nil # uses default when nil
 
     logger_config = ZM::Configuration.new do
@@ -41,7 +42,7 @@ class Dummy
     broker_config.exception_handler= nil
     broker_config.poll_interval= interval
 
-    broker_config.broker_endpoint  ="tcp://127.0.0.1:#{port}"
+    broker_config.broker_endpoint  = broker_endpoint
     broker_config.broker_bind = true
 
     broker_config.broker_klass= RzmqBrokers::Consensus::Broker::Handler
@@ -58,7 +59,7 @@ class Dummy
     client_config.exception_handler= nil
     client_config.poll_interval =interval
 
-    client_config.endpoint  ="tcp://127.0.0.1:#{port}"
+    client_config.endpoint  = broker_endpoint
     client_config.connect = true
     client_config.service_name  ="clock-lockstep"
     client_config.heartbeat_interval= 10_000
@@ -76,7 +77,7 @@ class Dummy
     @worker1_config.exception_handler= nil
     @worker1_config.poll_interval =interval
 
-    @worker1_config.endpoint  ="tcp://127.0.0.1:#{port}"
+    @worker1_config.endpoint  = broker_endpoint
     @worker1_config.connect  =true
     @worker1_config.service_name  ="clock-lockstep"
     @worker1_config.heartbeat_interval= 5_000

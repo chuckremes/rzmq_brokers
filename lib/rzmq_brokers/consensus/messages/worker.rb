@@ -13,18 +13,18 @@ module RzmqBrokers
       class Ready < Message
         attr_reader :heartbeat_interval, :heartbeat_retries
 
-        def self.from_network(frames, envelope)
+        def self.from_network(frames, address)
           service_name = frames.at(2).copy_out_string
           heartbeat_interval = heartbeat_interval_decoder(frames.at(3).copy_out_string)
           heartbeat_retries = heartbeat_retries_decoder(frames.at(4).copy_out_string)
-          new(service_name, heartbeat_interval, heartbeat_retries, envelope)
+          new(service_name, heartbeat_interval, heartbeat_retries, address)
         end
 
-        def initialize(service_name, heartbeat_interval, heartbeat_retries, envelope = nil)
+        def initialize(service_name, heartbeat_interval, heartbeat_retries, address = nil)
           @service_name = service_name
           @heartbeat_interval = heartbeat_interval
           @heartbeat_retries = heartbeat_retries
-          @envelope = envelope
+          @address = address
         end
 
         def worker?() true; end
@@ -54,12 +54,12 @@ module RzmqBrokers
       #
       class Heartbeat < Message
 
-        def self.from_network(frames, envelope)
-          new(envelope)
+        def self.from_network(frames, address)
+          new(address)
         end
 
-        def initialize(envelope = nil)
-          @envelope = envelope
+        def initialize(address = nil)
+          @address = address
         end
 
         def worker?() true; end
@@ -77,6 +77,75 @@ module RzmqBrokers
 
 
       # 0  - protocol header
+      # 1  - REPLY_SUCCESS
+      # 2  - service name
+      # 3  - sequence ID, 16-byte uuid + uint64, big-endian
+      # 4+ - reply payload
+      #
+      class ReplySuccess < Message
+        def self.from_network(frames, address)
+          service_name = frames.at(2).copy_out_string
+          sequence_id = sequence_decoder(frames.at(3).copy_out_string)
+          payload = extract_payload(frames)
+          new(service_name, sequence_id, payload, address)
+        end
+
+        def initialize(service_name, sequence_id, payload, address = nil)
+          @service_name = service_name
+          @sequence_id = sequence_id
+          @payload = payload
+          @address = address
+        end
+
+        def worker?() true; end
+
+        def success_reply?() true; end
+
+        def reply_success_msg
+          ZMQ::Message.new(REPLY_SUCCESS)
+        end
+
+        def to_msgs
+          super + [reply_success_msg, service_name_msg, sequence_id_msg] + payload_msgs
+        end
+      end # class ReplySuccess
+
+      
+      # A thinner version of the ReplySuccess class used exclusively on the
+      # broker. It saves the undecoded frames for forwarding this message on
+      # to its eventual destination so we can avoid the cost of re-encoding.
+      #
+      class BrokerReplySuccess < BrokerMessage
+        
+        def initialize(frames, address, service_name, sequence_id)
+          @payload = frames.slice!(4..-1)
+          super
+        end
+
+        def worker?() true; end
+
+        def success_reply?() true; end
+
+        # Let's the Request potentially replace the already-encoded payload.
+        # Replace the 4th frame forward.
+        #
+        def payload=(replacement)
+          close(@payload)
+          @payload = replacement
+          nil
+        end
+        
+        def payload_frames
+          @payload
+        end
+
+        def to_msgs
+          @frames + @payload
+        end
+      end # class BrokerReplySuccess
+
+
+      # 0  - protocol header
       # 1  - REPLY_FAILURE
       # 2  - service name
       # 3  - sequence ID, 16-byte uuid + uint64, big-endian
@@ -84,7 +153,7 @@ module RzmqBrokers
       #
       class ReplyFailure < Message
         def self.from_request(message)
-          new(message.service_name, message.sequence_id, message.payload)
+          new(message.service_name, message.sequence_id, nil)
         end
 
         def worker?() true; end
@@ -101,39 +170,9 @@ module RzmqBrokers
       end # class ReplyFailure
 
 
-      # 0  - protocol header
-      # 1  - REPLY_SUCCESS
-      # 2  - service name
-      # 3  - sequence ID, 16-byte uuid + uint64, big-endian
-      # 4+ - reply payload
-      #
-      class ReplySuccess < Message
-        def self.from_network(frames, envelope)
-          service_name = frames.at(2).copy_out_string
-          sequence_id = sequence_decoder(frames.at(3).copy_out_string)
-          payload = extract_payload(frames)
-          new(service_name, sequence_id, payload, envelope)
-        end
-
-        def initialize(service_name, sequence_id, payload, envelope = nil)
-          @service_name = service_name
-          @sequence_id = sequence_id
-          @payload = payload
-          @envelope = envelope
-        end
-
-        def worker?() true; end
-
-        def success_reply?() true; end
-
-        def reply_success_msg
-          ZMQ::Message.new(REPLY_SUCCESS)
-        end
-
-        def to_msgs
-          super + [reply_success_msg, service_name_msg, sequence_id_msg] + payload_msgs
-        end
-      end # class ReplySuccess
+      class BrokerReplyFailure < BrokerReplySuccess
+        def failure_reply?() true; end
+      end # class BrokerReplyFailure
 
 
       # 0  - protocol header
@@ -141,14 +180,14 @@ module RzmqBrokers
       # 2  - service name
       #
       class Disconnect < Message
-        def self.from_network(frames, envelope)
+        def self.from_network(frames, address)
           service_name = frames.at(2).copy_out_string
-          new(service_name, envelope)
+          new(service_name, address)
         end
 
-        def initialize(service_name, envelope = nil)
+        def initialize(service_name, addresss = nil)
           @service_name = service_name
-          @envelope = envelope
+          @address = address
         end
 
         def worker?() true; end

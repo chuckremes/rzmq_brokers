@@ -13,8 +13,14 @@ module RzmqBrokers
             def initialize(service, handler, client_request, worker)
               @service = service
               @handler = handler
-              @client_request = client_request
+              @envelope_msgs = client_request.envelope_msgs
               @worker = worker
+              
+              # it's possible that the broker may need to force a request failure if
+              # the worker were to timeout or disconnect before replying. In that case
+              # we need to save the message frame data so that the broker can build
+              # a failure reply.
+              @frames = client_request.to_msgs.map { |frame| frame.copy_out_string }
 
               @reply = nil
             end
@@ -33,15 +39,17 @@ module RzmqBrokers
             end
 
             def send_client_reply_success
-              @handler.send_client_reply_success(@client_request.envelope_msgs, @service.name, @client_request.sequence_id, saved_payload)
+              @handler.send_client_reply_success(@envelope_msgs, @reply)
             end
 
             def send_client_reply_failure
-              @handler.send_client_reply_failure(@client_request.envelope_msgs, @service.name, @client_request.sequence_id, saved_payload)
-            end
-
-            def saved_payload
-              @reply.payload if @reply
+              if @reply
+                @handler.send_client_reply_failure(@envelope_msgs, @reply)
+              else
+                # forced failure; no reply was received
+                frames = @frames.map { |string| ZMQ::Message.new(string) }
+                @handler.send_client_reply_failure(@envelope_msgs, nil, frames)
+              end
             end
 
             def close
@@ -60,9 +68,10 @@ module RzmqBrokers
           #
           include Enumerable
 
-          def initialize(service, handler)
+          def initialize(service, handler, reactor)
             @service = service
             @handler = handler
+            @reactor = reactor
 
             @open = Hash.new # key is sequence_no
             @closed = SortedArray.new
@@ -86,7 +95,15 @@ module RzmqBrokers
               client_request = @queue.shift
 
               @open[client_request.sequence_id] = Request.new(@service, @handler, client_request, worker)
+              
+              # client_request's frames are closed by this call
               @handler.send_worker_request(worker, client_request)
+            else
+              aw = @service.available_worker?
+              ar = available_request?
+              @reactor.log(:info, "#{self.class}, process requests delayed, available worker? [#{aw}], available_request? [#{ar}]")
+              @reactor.log(:debug, "#{self.class}, available worker count [#{@service.available_worker_count}]")
+              @reactor.log(:debug, "#{self.class}, queue length [#{@queue.size}]")
             end
           end
 
@@ -106,6 +123,9 @@ module RzmqBrokers
             if open?(message)
               request = @open[message.sequence_id]
               request.save_reply(message)
+            else
+              @reactor.log(:warn, "#{self.class}, Received reply for a non-open request; dropping #{message.sequence_id.inspect}")
+              message.close
             end
 
             # a worker may have just become available, so process the next request
@@ -141,7 +161,7 @@ module RzmqBrokers
         #
         def initialize(*args)
           super
-          @requests = Requests.new(self, @handler)
+          @requests = Requests.new(self, @handler, @reactor)
           @ordered_workers = Array.new
         end
 
@@ -194,18 +214,26 @@ module RzmqBrokers
         end
 
         def available_worker?
-          @ordered_workers.size > 0
+          available_worker_count > 0
+        end
+        
+        def available_worker_count
+          @ordered_workers.size
         end
 
         # Get the least-recently used (i.e. first) worker from the ordered array.
         def get_lru_worker
-          @ordered_workers.shift
+          worker = @ordered_workers.shift
+          @reactor.log(:debug, "#{self.class}, Get LRU worker, remaining workers available [#{available_worker_count}]")
+          @reactor.log(:debug, "#{self.class}, LRU worker was nil") unless worker
+          worker
         end
 
         # Add to the end of the Array. Array is ordered least-recently used to most-recently
         # used.
         def add_mru_worker(worker)
           @ordered_workers << worker
+          @reactor.log(:debug, "#{self.class}, Added MRU worker back, workers available [#{available_worker_count}]")
         end
       end # class Service
 

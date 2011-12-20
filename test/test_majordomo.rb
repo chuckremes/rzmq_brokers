@@ -12,9 +12,10 @@ class Dummy
   WORKERS = 2
   CLIENTS = 10
 
-  def  initialize
+  def  initialize(port)
     master_context = ZMQ::Context.new
     log_endpoint = 'inproc://reactor_log'
+    broker_endpoint = "inproc://majordomo_broker_#{port}" # "tcp://127.0.0.1:#{port}"
 
     logger_config = ZM::Configuration.new do
       context master_context
@@ -42,7 +43,7 @@ class Dummy
       exception_handler nil
       poll_interval 250
 
-      broker_endpoint  "tcp://127.0.0.1:5555"
+      broker_endpoint  broker_endpoint
       broker_bind  true
 
       broker_klass RzmqBrokers::Majordomo::Broker::Handler
@@ -60,7 +61,7 @@ class Dummy
       exception_handler nil
       poll_interval 250
 
-      endpoint  "tcp://127.0.0.1:5555"
+      endpoint  broker_endpoint
       connect  true
       service_name  "db-lookup"
       heartbeat_interval 15_000
@@ -79,7 +80,7 @@ class Dummy
       exception_handler nil
       poll_interval 250
 
-      endpoint  "tcp://127.0.0.1:5555"
+      endpoint  broker_endpoint
       connect  true
       service_name  "db-lookup"
       heartbeat_interval 15_000
@@ -98,7 +99,7 @@ class Dummy
       exception_handler nil
       poll_interval 250
 
-      endpoint  "tcp://127.0.0.1:5555"
+      endpoint  broker_endpoint
       connect  true
       service_name  "db-lookup"
       heartbeat_interval 13_000
@@ -193,7 +194,7 @@ class Dummy
   end
 end
 
-dummy = Dummy.new
+dummy = Dummy.new(ARGV[0])
 sleep 2 # give everything a chance to spin up before hammering the broker
 dummy.run_first
 

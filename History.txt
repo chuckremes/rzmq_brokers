@@ -1,3 +1,16 @@
+== 0.7.1 / 2011-12-15
+  * Modified the Broker to use a special subset of the Messages. The
+    intention was to have the messages received by the Broker cache their
+    encoded forms and in many cases let us do zero-copy. The main traffic
+    flow is from Request, ReplySuccess and ReplyFailure messages so anything
+    we can do to avoid excessive copying and decoding is a performance
+    win. The Broker stores the received frames and uses them for zero-copy
+    forwarding whenever possible. If copies need to be made, we utilize
+    the zmq_msg_copy() facility so that the buffers don't need to be copied
+    from native memory to Ruby and then back again; that function let's the
+    library directly reference the native memory buffer without a buffer
+    copy being necessary (libzmq uses refcounting under the covers).
+
 == 0.6.1 / 2011
   * Fixed bug. When a Worker timed out in the Broker, it was deleted but
     the logic was missing to cancel its heartbeat timer and give up other

@@ -64,13 +64,17 @@ module RzmqBrokers
       end
 
       def delimiter
-        [ZMQ::Message.new]
+        [enclose_msg(nil)]
+      end
+      
+      def enclose_msg(string)
+        ZMQ::Message.new(string)
       end
     end # module MessageClassMethods
 
 
     module MessageInstanceMethods
-      attr_reader :service_name, :payload, :envelope
+      attr_reader :service_name, :payload, :address
 
       # Used for if/else tests. Subclasses of message override these methods and return
       # true where appropriate.
@@ -88,7 +92,7 @@ module RzmqBrokers
       # This value is set by 0mq and should be unique.
       #
       def envelope_identity
-        self.class.strhex(@envelope[-2])
+        @envelop_identity ||= self.class.strhex(@address[-2])
       end
 
       def to_msgs
@@ -96,8 +100,8 @@ module RzmqBrokers
       end
 
       def envelope_msgs
-        if @envelope
-          @envelope.map { |address| ZMQ::Message.new(address) }
+        if @address
+          @address.map { |address| ZMQ::Message.new(address) }
         else
           []
         end

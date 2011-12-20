@@ -19,7 +19,10 @@ module RzmqBrokers
             def initialize(service, handler, client_request)
               @service = service
               @handler = handler
-              @client_request = client_request
+              
+              # client_request is not owned by this class; take what we need
+              # and let the caller deal with freeing it
+              @return_address = client_request.envelope_msgs
 
               @replies = {}
               @service.each { |worker| @replies[worker.identity] = nil }
@@ -27,15 +30,28 @@ module RzmqBrokers
 
             def save_reply(message)
               if message.failure_reply?
+                @message = message
                 @service.close_request(self)
               else
-                @replies[message.envelope_identity] = message.payload
+                save_payload(message)
 
                 if satisfied?
+                  # use the last received message as the zero-copy carrier to return the result
+                  # all the way back to the client; replace its payload with the saved payload
+                  @message = message
+                  @message.payload = saved_payload
+                  
                   send_client_reply_success
                   @service.close_request(self)
+                else
+                  # awaiting more replies; close last message
+                  message.close
                 end
               end
+            end
+            
+            def save_payload(message)
+              @replies[message.envelope_identity] = message.payload.map { |msg| msg.copy_out_string }
             end
 
             def satisfied?
@@ -43,15 +59,15 @@ module RzmqBrokers
             end
 
             def send_client_reply_success
-              @handler.send_client_reply_success(@client_request.envelope_msgs, @service.name, @client_request.sequence_id, saved_payload)
+              @handler.send_client_reply_success(@return_address, @message)
             end
 
             def send_client_reply_failure
-              @handler.send_client_reply_failure(@client_request.envelope_msgs, @service.name, @client_request.sequence_id)
+              @handler.send_client_reply_failure(@return_address, @message)
             end
 
             def saved_payload
-              @replies.values.flatten
+              @replies.values.flatten.map { |string| ZMQ::Message.new(string) }
             end
 
             def close
@@ -85,11 +101,12 @@ module RzmqBrokers
 
           def ready?() @open.size.zero?; end
 
-          def add(client_request)
-            @open[client_request.sequence_id] = Request.new(@service, @handler, client_request)
+          def add(client_request_msg)
+            @open[client_request_msg.sequence_id] = Request.new(@service, @handler, client_request_msg)
             @service.each do |worker|
-              @handler.send_worker_request(worker, client_request)
+              @handler.send_worker_request(worker, client_request_msg.dup)
             end
+            client_request_msg.close
           end
 
           def open?(message)
@@ -108,6 +125,8 @@ module RzmqBrokers
             if open?(message)
               request = @open[message.sequence_id]
               request.save_reply(message)
+            else
+              message.close
             end
           end
 
