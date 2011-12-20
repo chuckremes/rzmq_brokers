@@ -10,6 +10,10 @@
     from native memory to Ruby and then back again; that function let's the
     library directly reference the native memory buffer without a buffer
     copy being necessary (libzmq uses refcounting under the covers).
+    
+  * Added a PING message. Intended to allow Clients to check the health
+    of the Broker. The Broker does no processing on the message other than
+    to return it.
 
 == 0.6.1 / 2011
   * Fixed bug. When a Worker timed out in the Broker, it was deleted but
