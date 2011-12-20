@@ -12,7 +12,7 @@ module RzmqBrokers
         @handler = handler
         @service_name = service_name
         @identity = identity
-        @envelope = envelope
+        @envelope = envelope.dup
 
         @heartbeat_interval = heartbeat_interval
         @heartbeat_retries = heartbeat_retries

@@ -28,7 +28,7 @@ module RzmqBrokers
 
       def on_read(socket, messages, envelope)
         message = @base_msg_klass.create_from(messages, envelope)
-        @reactor.log(:debug, "#{self.class}, Reading message #{message.inspect}")
+        #@reactor.log(:debug, "#{self.class}, Reading message #{message.inspect}")
 
         @hb_received_at = Time.now # receiving *any* message resets the heartbeat timer
 
@@ -90,6 +90,7 @@ module RzmqBrokers
           reconnect_broker
         else
           @reactor.log(:info, "#{self.class}, Worker [#{@service_name}] sees a healthy broker, time now [#{Time.now}]")
+          @reactor.log(:info, "#{self.class}, Worker [#{@service_name}] last saw a heartbeat at [#{@hb_received_at}] and is now [#{Time.now}]")
         end
       end
 
