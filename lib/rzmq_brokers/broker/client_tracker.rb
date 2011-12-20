@@ -42,12 +42,14 @@ module RzmqBrokers
             client.advance_to_next_expectation
             true
           else
+            @reactor.log(:error, "#{self.class}, seq [#{sequence_number}], clientid [#{client_id}] were NOT expected!")
             false
           end
         else
           if 1 == sequence_number
             @clients[client_id] = ClientIdentity.new(client_socket_id, client_id)
           else
+            @reactor.log(:error, "#{self.class}, expected 1 but received seq [#{sequence_number}], clientid [#{client_id}]")
             false
           end
         end
@@ -60,7 +62,10 @@ module RzmqBrokers
         oldest_allowed_time = Time.now - @expire_after_seconds
         
         @clients.keys.each do |key|
-          @clients.delete(key) if @clients[key].expired?(oldest_allowed_time)
+          if @clients[key].expired?(oldest_allowed_time)
+            @reactor.log(:info, "#{self.class}, Purging expired client for client_id [#{key}] after [#{@expire_after_seconds}] seconds without activity.")
+            @clients.delete(key)
+          end
         end
       end
     end # class ClientTracker
