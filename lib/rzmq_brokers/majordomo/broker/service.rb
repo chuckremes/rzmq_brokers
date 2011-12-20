@@ -103,7 +103,7 @@ module RzmqBrokers
               ar = available_request?
               @reactor.log(:info, "#{self.class}, process requests delayed, available worker? [#{aw}], available_request? [#{ar}]")
               @reactor.log(:debug, "#{self.class}, available worker count [#{@service.available_worker_count}]")
-              @reactor.log(:debug, "#{self.class}, queue length [#{@queue.size}]")
+              @reactor.log(:debug, "#{self.class}, queue length for service [#{@service.name}] is [#{@queue.size}].")
             end
           end
 
@@ -209,7 +209,7 @@ module RzmqBrokers
         # A timed-out or disconnected worker should
         # cause the request associated with the deleted worker to fail.
         def fail_open_requests(worker)
-          # need to fail the request associated with this worker
+          # need to fail the requests associated with this worker
           @requests.fail_for_worker(worker)
         end
 
@@ -232,8 +232,12 @@ module RzmqBrokers
         # Add to the end of the Array. Array is ordered least-recently used to most-recently
         # used.
         def add_mru_worker(worker)
-          @ordered_workers << worker
-          @reactor.log(:debug, "#{self.class}, Added MRU worker back, workers available [#{available_worker_count}]")
+          if @workers.has_key?(worker.identity)
+            @ordered_workers << worker
+            @reactor.log(:debug, "#{self.class}, Added MRU worker back, workers available [#{available_worker_count}]")
+          else
+            @reactor.log(:info, "#{self.class}, Could not add MRU worker [#{worker.identity}] back. Must have been deleted earlier.")
+          end
         end
       end # class Service
 
