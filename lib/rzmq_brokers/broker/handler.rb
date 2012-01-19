@@ -24,14 +24,18 @@ module RzmqBrokers
         def on_read(socket, messages, envelope)
           message = @base_msg_klass.create_from(messages, envelope)
 
-          if message.client?
-            @broker.process_client(message)
-          elsif message.worker?
-            @broker.process_worker(message)
-          elsif message.ping?
-            @broker.process_ping(message)
+          if message
+            if message.client?
+              @broker.process_client(message)
+            elsif message.worker?
+              @broker.process_worker(message)
+            elsif message.ping?
+              @broker.process_ping(message)
+            else
+              @reactor.log(:error, "#{self.class}, Received unknown message type! #{message.inspect}")
+            end
           else
-            @reactor.log(:error, "#{self.class}, Received unknown message type! #{message.inspect}")
+            print_fatal(messages, envelope)
           end
         end
 
@@ -50,6 +54,16 @@ module RzmqBrokers
           #messages.each { |message| message.close }
         end
 
+        def print_fatal(messages, envelope)
+          str  = messages.map { |msg| msg.copy_out_string.inspect }
+          #str.unshift(@base_msg_klass.strhex(envelope[-2].copy_out_string))
+          str.unshift(@reactor.name)
+          str.unshift(Thread.current['reactor-name'].to_s)
+          str.unshift(@base_msg_klass.to_s)
+          str.unshift(caller(0))
+          str.flatten!
+          @reactor.log(:fatal, str.join("\n"))
+        end
       end # class Router
 
 
@@ -112,7 +126,7 @@ module RzmqBrokers
           @reactor.log(:warn, "#{@klass_name}, Received unexpected message type! #{message.inspect}")
         end
       end
-      
+
       def process_ping(message)
         send_ping(message)
       end
@@ -180,13 +194,13 @@ module RzmqBrokers
 
       # pass in the worker; uses worker to build hb message and get return address
       def send_worker_heartbeat(worker)
-        @reactor.log(:debug, "#{@klass_name}, Heartbeat for worker [#{worker.identity}]")
+        @reactor.log(:debug, "#{@klass_name}, Heartbeat for worker [#{worker.identity}] on thread [#{Thread.current['reactor-name']}]")
         @router.write(worker.return_address + @heartbeat_msg_klass.new.to_msgs)
       end
 
       def send_worker_request(worker, request)
         @reactor.log(:debug, "#{@klass_name}, Sending request to worker [#{worker.identity}]")
-        @router.write(worker.return_address + request.to_msgs)
+        @router.write(worker.format_request(request))
       end
 
       def send_client_reply_success(return_address, message)
@@ -196,14 +210,14 @@ module RzmqBrokers
 
       def send_client_reply_failure(return_address, message, frames)
         @reactor.log(:debug, "#{@klass_name}, Sending a failure reply to client.")
-        
+
         unless message
           # broker is forcing this failure; build a message from the frames
           message = @reply_failure_msg_klass.from_network(frames, nil)
         end
         @router.write(return_address + message.to_msgs)
       end
-      
+
       def send_ping(message)
         @reactor.log(:info, "#{@klass_name}, Returning ping.")
         @router.write(message.to_msgs)
@@ -241,6 +255,17 @@ module RzmqBrokers
         @reactor = ZM::Reactor.new(configuration)
         @reactor.run
         configuration.reactor = @reactor
+
+        # Need to finish setup while on the reactor thread because it will be calling
+        # @reactor.log and other reactor-specific methods. These all must be called
+        # from the reactor thread or bad things happen.
+        @reactor.next_tick { finish_configuration(configuration) }
+      end
+
+
+      private
+
+      def finish_configuration(configuration)
         handler_klass = configuration.broker_klass || RzmqBrokers::Broker::Handler
         @handler = handler_klass.new(configuration)
       end

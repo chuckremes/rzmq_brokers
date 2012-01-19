@@ -31,11 +31,20 @@ module RzmqBrokers
         message = @base_msg_klass.create_from(messages, envelope)
         #@reactor.log(:debug, "Client reply, success_reply? [#{message.success_reply?}], failure_reply? [#{message.failure_reply?}], msg.inspect #{message.inspect}")
 
-        if message.success_reply? || message.failure_reply?
-          @requests.process_reply(message)
-        elsif message.ping?
-          @on_ping.call
+        if message
+          if message.success_reply? || message.failure_reply?
+            @requests.process_reply(message)
+          elsif message.ping?
+            @on_ping.call
+          end
+        else
+          print_fatal(messages, envelope)
         end
+      end
+      
+      def shutdown
+        @reactor.log(:info, "#{self.class}, Shutting down...")
+        super()
       end
 
       # Shouldn't be called directly by user code. This is a helper called via #process_request
@@ -53,7 +62,7 @@ module RzmqBrokers
         @reactor.log(:debug, "#{self.class}, Processing request #{message.inspect}")
         @requests.add(message, request_options)
       end
-      
+
       def send_ping
         @reactor.log(:debug, "#{self.class}, Processing ping")
         write(@base_msg_klass.delimiter + @ping_msg_klass.to_msgs)
@@ -66,7 +75,7 @@ module RzmqBrokers
       def on_failure(request, message = nil)
         unless message
           @broker_timeouts += 1
-          
+
           if exceeded_broker_timeouts?
             timeouts_exceeded
             return
@@ -74,7 +83,7 @@ module RzmqBrokers
             message = @reply_failure_msg_klass.new(request.service_name, request.sequence_id, nil)
           end
         end
-        
+
         @on_failure.call(message)
       end
 
@@ -94,7 +103,7 @@ module RzmqBrokers
         @broker_timeouts = 0
         reopen_broker_connection
       end
-      
+
       def reopen_broker_connection
         @reactor.log(:info, "#{self.class}, Requesting a new connection to the Broker.")
         reopen_socket
@@ -128,7 +137,7 @@ module RzmqBrokers
       def generate_client_id
         FNV.hash_string(UUID.new.generate(:compact))
       end
-      
+
       def exceeded_broker_timeouts?
         @broker_timeouts > @max_broker_timeouts
       end
@@ -137,6 +146,18 @@ module RzmqBrokers
         @reactor.close_socket(@socket) if @socket
         allocate_socket
         on_attach(@socket)
+      end
+
+      def print_fatal(messages, envelope)
+        str  = messages.map { |msg| msg.copy_out_string.inspect }
+        #str.unshift(@base_msg_klass.strhex(envelope[-2].copy_out_string))
+        str.unshift(@reactor.name)
+        str.unshift(Thread.current['reactor-name'].to_s)
+        str.unshift(@base_msg_klass.to_s)
+        str.unshift(caller(0))
+        str.flatten!
+        STDERR.print(str.join("\n"))
+        @reactor.log(:fatal, str.join("\n"))
       end
     end # class Handler
 
@@ -150,7 +171,8 @@ module RzmqBrokers
         @reactor = ZM::Reactor.new(configuration)
         @reactor.run
         configuration.reactor(@reactor)
-        @handler = RzmqBrokers::Client::Handler.new(configuration)
+
+        schedule { finish_configuration(configuration) }
       end
 
       def send_request(service_name, payload)
@@ -173,17 +195,25 @@ module RzmqBrokers
         #
         schedule { @handler.process_request(message, request_options) }
       end
-      
+
       def send_ping
         schedule { @handler.send_ping }
       end
-      
+
       def reopen_broker_connection
         schedule { @handler.reopen_broker_connection }
+      end
+      
+      def shutdown
+        schedule { @handler.shutdown }
       end
 
 
       private
+
+      def finish_configuration(configuration)
+        @handler = RzmqBrokers::Client::Handler.new(configuration)
+      end
 
       def schedule(&blk)
         @reactor.next_tick(blk)
