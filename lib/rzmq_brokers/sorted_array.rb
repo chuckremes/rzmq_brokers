@@ -52,19 +52,17 @@ module RzmqBrokers
     def index(value)
       l, r = 0, @array.size - 1
 
-      # if r == 0, then the array is empty; don't iterate
-      if r > 0
-        while l <= r
-          m = (r + l) / 2
+      while l <= r
+        m = (r + l) / 2
 
-          # similar to (value < @array.at(m)) but works with anything Comparable
-          if -1 == (value <=> @array.at(m))
-            r = m - 1
-          else
-            l = m + 1
-          end
+        # similar to (value < @array.at(m)) but works with anything Comparable
+        if -1 == (value <=> @array.at(m))
+          r = m - 1
+        else
+          l = m + 1
         end
       end
+
       l
     end
 
