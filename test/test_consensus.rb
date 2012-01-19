@@ -13,7 +13,8 @@ class Dummy
   def  initialize(port)
     master_context = ZMQ::Context.new
     log_endpoint = 'inproc://reactor_log'
-    broker_endpoint = "inproc://broker_#{port}" # "tcp://127.0.0.1:#{port}"
+    #broker_endpoint = "inproc://broker_#{port}"
+    broker_endpoint = "tcp://127.0.0.1:#{port}"
     interval = nil # uses default when nil
 
     logger_config = ZM::Configuration.new do
@@ -163,6 +164,12 @@ class Dummy
 end
 
 dummy = Dummy.new(ARGV[0])
+
+# JIT warmup
+15.times do
+  dummy.run_first(1)
+  sleep 1 while dummy.running?
+end
 
 1.upto(1000) do |i|
   dummy.run_first(i)
