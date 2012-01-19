@@ -171,6 +171,15 @@ module RzmqBrokers
 
 
       class BrokerReplyFailure < BrokerReplySuccess
+        def self.from_request(message)
+          frames = message.frames
+          service_name = frames.at(2).copy_out_string
+          sequence_id = frames.at(3).copy_out_string
+          message.close
+          frames = [protocol_version_msg, ZMQ::Message.new(REPLY_FAILURE), ZMQ::Message.new(service_name), ZMQ::Message.new(sequence_id)]
+          from_network(frames, message.address)
+        end
+
         def failure_reply?() true; end
       end # class BrokerReplyFailure
 

@@ -92,7 +92,7 @@ module RzmqBrokers
       # This value is set by 0mq and should be unique.
       #
       def envelope_identity
-        @envelop_identity ||= self.class.strhex(@address[-2])
+        @envelop_identity ||= self.class.strhex(@address[-2]) if @address
       end
 
       def to_msgs

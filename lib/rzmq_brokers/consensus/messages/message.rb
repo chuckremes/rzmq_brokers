@@ -47,7 +47,7 @@ module RzmqBrokers
               unknown_message_handler(msg_type, frames, address)
             end
           else
-            #print("UNKNOWN PROTOCOL, return nil\n")
+            STDERR.print("fatal: UNKNOWN PROTOCOL [#{protocol.inspect}], expected [#{PROTOCOL_VERSION.inspect}] returning nil\n")
           end # correct_protocol?
         end
 
@@ -136,7 +136,7 @@ module RzmqBrokers
               message
             end
           else
-            #print("UNKNOWN PROTOCOL, return nil\n")
+            STDERR.print("fatal: UNKNOWN PROTOCOL [#{protocol.inspect}], expected [#{PROTOCOL_VERSION.inspect}] returning nil\n")
           end # correct_protocol?
         end
 
@@ -147,6 +147,8 @@ module RzmqBrokers
           sequence_id = sequence_decoder(frames.at(3).copy_out_string)
           new(frames, address, service_name, sequence_id)
         end
+
+        attr_reader :frames
 
         def initialize(frames, address, service_name, sequence_id)
           @frames = frames

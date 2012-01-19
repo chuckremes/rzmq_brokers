@@ -47,7 +47,18 @@ module RzmqBrokers
               unknown_message_handler(msg_type, frames, address)
             end
           else
-            #print("UNKNOWN PROTOCOL, return nil\n")
+            #            index = 0
+            #            results = []
+            #            PROTOCOL_VERSION.each_byte do |byte|
+            #              other_byte = protocol.byteslice(index)
+            #              if byte != other_byte
+            #                results << "Expected [#{byte.inspect}] to equal [#{other_byte.inspect}] at index [#{index}]"
+            #              end
+            #
+            #              index += 1
+            #            end
+            #            STDERR.print("fatal: \n #{results.join("\n")}")
+            STDERR.print("fatal: UNKNOWN PROTOCOL [#{protocol.inspect}], expected [#{PROTOCOL_VERSION.inspect}] returning nil\n")
           end # correct_protocol?
         end
 
@@ -145,7 +156,7 @@ module RzmqBrokers
               message
             end
           else
-            #print("UNKNOWN PROTOCOL, return nil\n")
+            STDERR.print("fatal: UNKNOWN PROTOCOL [#{protocol.inspect}], expected [#{PROTOCOL_VERSION.inspect}] returning nil\n")
           end # correct_protocol?
         end
 
