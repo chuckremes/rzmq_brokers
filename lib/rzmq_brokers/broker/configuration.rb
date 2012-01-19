@@ -13,14 +13,20 @@ module RzmqBrokers
     RzmqBrokers::Broker)
 
     class Configuration
-
       def initialize(&blk)
-        instance_eval(&blk) if block_given?
-
         # set defaults
-        self.client_expiration_secs ||= 3600
-      end
+        self.broker = nil
+        self.broker_endpoint = nil
+        self.broker_bind = false
+        self.broker_connect = false
+        self.client_expiration_secs = 3600
+        self.broker_klass = nil
+        self.service_klass = nil
+        self.worker_klass = nil
+        self.base_msg_klass = nil
 
+        instance_eval(&blk) if block_given?
+      end
     end # Configuration
 
   end # module Broker

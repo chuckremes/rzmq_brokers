@@ -7,15 +7,13 @@ module RzmqBrokers
     RzmqBrokers::Client)
 
     class RequestOptions
-
       def initialize(&blk)
-        instance_eval(&blk) if block_given?
-
         # set defaults
-        self.timeout_ms ||= 0
-        self.retries ||= 0
-      end
+        self.timeout_ms = 0
+        self.retries = 0
 
+        instance_eval(&blk) if block_given?
+      end
     end # RequestOptions
 
   end
